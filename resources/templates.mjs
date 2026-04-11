@@ -1,7 +1,7 @@
 export function question(instance, showFeedback) {
   const question = instance.questions[instance.current];
   return instance.ui.html`
-    <div>
+    <main>
       <h1>${question.text}</h1>
       <p>${question.description}</p>
       
@@ -29,19 +29,21 @@ export function question(instance, showFeedback) {
         )}
       </ul>
 
-      <button data-on-click="submit"
-              ${showFeedback && "disabled"}
-              ${!instance.feedback && "hidden"}>
-        ${instance.labels.submit}
-      </button>
-      <button data-on-click="next"
-              ${(!showFeedback || instance.current >= instance.questions.length - 1) && "disabled"}>
-        ${instance.labels.next}
-      </button>
-      <button data-on-click="finish"
-              ${(!showFeedback || instance.current < instance.questions.length - 1) && "disabled"}>
-        ${instance.labels.finish}
-      </button>
-    </div>
+      <nav>
+        <button data-on-click="submit"
+                ${showFeedback && "disabled"}
+                ${!instance.feedback && "hidden"}>
+          ${instance.labels.submit}
+        </button>
+        <button data-on-click="next"
+                ${(!showFeedback || instance.current >= instance.questions.length - 1) && "disabled"}>
+          ${instance.labels.next}
+        </button>
+        <button data-on-click="finish"
+                ${(!showFeedback || instance.current < instance.questions.length - 1) && "disabled"}>
+          ${instance.labels.finish}
+        </button>
+      </nav>
+    </main>
   `;
 }

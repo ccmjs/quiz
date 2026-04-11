@@ -13,10 +13,12 @@ export const component = {
       finish: "Finish",
     },
     onaction: [
+      // ["ccm.load", "././resources/actions.mjs#startButton"],
       // ["ccm.load", "././resources/actions.mjs#shuffleQuestions"],
       // ["ccm.load", "././resources/actions.mjs#randomAnswers"],
-      // ["ccm.load", "././resources/actions.mjs#restart"],
+      // ["ccm.load", "././resources/actions.mjs#anytimeFinish"],
       // ["ccm.load", "././resources/actions.mjs#analytics"],
+      // ["ccm.load", "././resources/actions.mjs#restart"],
     ],
   },
   Instance: function () {
@@ -29,6 +31,7 @@ export const component = {
     };
 
     this.start = async () => {
+      await emit("before-start");
       this.state = { items: this.questions.map(() => ({})) };
       this.current = 0;
       this.renderQuestion(false);
@@ -52,7 +55,6 @@ export const component = {
       },
 
       finish: () => {
-        if (this.current < this.questions.length - 1) return;
         if (!this.feedback) this.evaluate();
         emit("finish");
       },

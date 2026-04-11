@@ -1,7 +1,9 @@
 export const demo = {
   onaction: [
+    ["ccm.load", "././resources/actions.mjs#startButton"],
     // ["ccm.load", "././resources/actions.mjs#shuffleQuestions"],
     ["ccm.load", "././resources/actions.mjs#randomAnswers"],
+    ["ccm.load", "././resources/actions.mjs#anytimeFinish"],
     ["ccm.load", "././resources/actions.mjs#analytics"],
     ["ccm.load", "././resources/actions.mjs#restart"],
   ],
