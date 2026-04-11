@@ -1,19 +1,7 @@
 <!DOCTYPE html>
 <meta charset="UTF-8">
 <body>
-<script src="https://ccmjs.github.io/framework/ccm.js"></script>
+<script src="././libs/ccmjs/ccm.js"></script>
 <script>
-  ccm.start("https://ccmjs.github.io/quiz/ccm.quiz.mjs", {
-    feedback: true,
-    questions: [
-      {
-        text: "Does this example work?",
-        input: "radio",
-        answers: [
-          {text: "Yes", correct: true},
-          {text: "No"}
-        ]
-      }
-    ]
-  }, document.body);
+  ccm.start("././ccm.quiz.mjs", ["ccm.load", "././resources/configs.mjs#demo"], document.body);
 </script>

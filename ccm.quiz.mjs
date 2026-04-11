@@ -1,62 +1,89 @@
 export const component = {
-  name: 'quiz',
-  ccm: 'https://ccmjs.github.io/framework/ccm.js',
+  name: "quiz",
+  ccm: "././libs/ccmjs/ccm.js",
   config: {
-    feedback: false,
-    questions: []
+    ui: ["ccm.load", "././libs/ccm-ui/ccm-ui.mjs"],
+    html: ["ccm.load", "././resources/templates.mjs"],
+    css: ["ccm.load", "././resources/styles.css"],
+    questions: [],
+    feedback: true,
+    labels: {
+      submit: "Submit",
+      next: "Next",
+      finish: "Finish",
+    },
+    onaction: [
+      // ["ccm.load", "././resources/actions.mjs#shuffleQuestions"],
+      // ["ccm.load", "././resources/actions.mjs#randomAnswers"],
+      // ["ccm.load", "././resources/actions.mjs#restart"],
+      // ["ccm.load", "././resources/actions.mjs#analytics"],
+    ],
   },
   Instance: function () {
+    this.init = async () => {
+      await emit("init");
+    };
+
+    this.ready = async () => {
+      await emit("ready");
+    };
 
     this.start = async () => {
-      this.element.innerHTML = '';
-
-      this.questions.forEach((q, qi) => {
-        const fieldset = document.createElement('fieldset');
-
-        const legend = document.createElement('legend');
-        legend.textContent = q.text;
-        fieldset.appendChild(legend);
-
-        q.answers.forEach((a, ai) => {
-          const label = document.createElement('label');
-          label.style.display = 'block';
-
-          const input = document.createElement('input');
-          input.type = q.input || 'radio';
-          input.name = `q${qi}`;
-          input.value = ai;
-
-          label.appendChild(input);
-          label.append(` ${a.text}`);
-          fieldset.appendChild(label);
-        });
-
-        this.element.appendChild(fieldset);
-      });
-
-      const button = document.createElement('button');
-      button.textContent = 'Submit';
-      button.onclick = evaluate;
-      this.element.appendChild(button);
+      this.state = { items: this.questions.map(() => ({})) };
+      this.current = 0;
+      this.renderQuestion(false);
+      await emit("start");
     };
 
-    const evaluate = () => {
-      let correct = 0;
-      let total = this.questions.length;
+    this.events = {
+      submit: () => {
+        if (!this.feedback) return;
+        this.evaluate();
+        this.renderQuestion(true);
+        emit("submit");
+      },
 
-      this.questions.forEach((q, qi) => {
-        const selected = this.element.querySelector(
-            `input[name="q${qi}"]:checked`
-        );
-        if (!selected) return;
+      next: () => {
+        if (this.current >= this.questions.length - 1) return;
+        if (!this.feedback) this.evaluate();
+        this.current++;
+        this.renderQuestion();
+        emit("next");
+      },
 
-        const answer = q.answers[selected.value];
-        if (answer.correct) correct++;
-      });
-
-      if (this.feedback) {
-        alert(`Result: ${correct} / ${total}`);
-      }
+      finish: () => {
+        if (this.current < this.questions.length - 1) return;
+        if (!this.feedback) this.evaluate();
+        emit("finish");
+      },
     };
-  }
+
+    this.renderQuestion = (showFeedback) => {
+      this.ui.render(
+        this.html.question(this, showFeedback),
+        this.element,
+        this,
+      );
+    };
+
+    this.evaluate = () => {
+      const item = this.state.items[this.current];
+      const inputs = [...this.element.querySelectorAll(".input")];
+
+      item.input = [];
+      inputs.forEach((input, i) => input.checked && item.input.push(i));
+
+      item.solution = [];
+      this.questions[this.current].answers.forEach(
+        (answer, i) => answer.correct && item.solution.push(i),
+      );
+    };
+
+    const emit = async (type, data) => {
+      if (!this.onaction) return;
+      const event = { instance: this, type, data };
+      if (!Array.isArray(this.onaction)) this.onaction(event);
+      for (const fn of this.onaction) fn && (await fn(event));
+    };
+  },
 };
