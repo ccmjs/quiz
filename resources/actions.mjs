@@ -1,30 +1,55 @@
-export async function startButton({ instance, type }) {
-  if (type === "start") {
-    instance.element.firstElementChild.hidden = true;
-    const start_btn = instance.ui.html`<button data-on-click="start">
-      ${instance.labels.start || "Start"}
-    </button>`;
-    instance.ui.bind(start_btn, instance);
-    instance.element.appendChild(start_btn);
-  }
+export async function restore({ instance, type }) {
+  if (type !== "start") return;
+  const state = await loadState(instance);
+  if (!state) return;
+  instance.state = state;
+  instance.renderQuestion(
+    instance.feedback && instance.state.items[instance.current].input,
+  );
+}
 
+export function skippable({ instance, type }) {
   switch (type) {
-    case "ready":
-      instance.events.start = () => {
-        instance.element.querySelector('[data-on-click="start"]').hidden = true;
-        instance.element.firstElementChild.hidden = false;
-      };
-      instance.events.exit = instance.start;
-      break;
+    case "next":
+      if (instance.feedback && instance.state.items[instance.current].input)
+        instance.renderQuestion(true);
     case "start":
+    case "prev":
+      if (instance.current < instance.questions.length - 1)
+        instance.element.querySelector('[data-on-click="next"]').disabled =
+          false;
+  }
+}
+
+export async function startButton({ instance, type }) {
+  switch (type) {
+    case "start":
+      instance.element.firstElementChild.hidden = true;
+      const startBtn = instance.ui.html`<button data-on-click="startbtn">
+        ${instance.labels.start || "Start"}
+      </button>`;
+      instance.ui.bind(startBtn, instance);
+      instance.element.appendChild(startBtn);
+    case "prev":
     case "submit":
     case "next":
-      const exit_btn = instance.ui.html`<button data-on-click="exit">
+      const exitBtn = instance.ui.html`<button data-on-click="exit">
         ${instance.labels.exit || "Exit"}
       </button>`;
-      instance.ui.bind(exit_btn, instance);
-      instance.element.querySelector("nav").appendChild(exit_btn);
+      instance.ui.bind(exitBtn, instance);
+      instance.element.querySelector("nav").appendChild(exitBtn);
       break;
+    case "ready":
+      instance.events["startbtn"] = () => {
+        instance.element.querySelector('[data-on-click="startbtn"]').hidden =
+          true;
+        instance.element.firstElementChild.hidden = false;
+        instance.emit("startbtn");
+      };
+      instance.events.exit = async () => {
+        await instance.start();
+        instance.emit("exit");
+      };
   }
 }
 
@@ -45,28 +70,31 @@ export async function shuffleQuestions({ instance, type }) {
   shuffle(instance.questions);
 }
 
-export function randomAnswers({ instance, type }) {
+export async function randomAnswers({ instance, type }) {
   if (type !== "before-start") return;
   instance.questions.forEach((question) => shuffle(question.answers));
 }
 
 export function prevButton({ instance, type }) {
-  const prev_btn = instance.ui
-    .html`<button data-on-click="prev" ${instance.current === 1 && "disabled"}>${instance.labels.prev || "Previous"}</button>`;
-  instance.ui.bind(prev_btn, instance);
-
   switch (type) {
     case "start":
+    case "prev":
     case "submit":
     case "next":
+      const prev_btn = instance.ui
+        .html`<button data-on-click="prev" ${instance.current === 0 && "disabled"}>${instance.labels.prev || "Previous"}</button>`;
+      instance.ui.bind(prev_btn, instance);
       instance.element.querySelector("nav").prepend(prev_btn);
       break;
     case "ready":
       instance.events.prev = () => {
         if (instance.current === 0) return;
+        if (!instance.feedback) this.evaluate();
         instance.current--;
-        instance.renderQuestion(instance.state.items[instance.current].input);
-        instance.element.querySelector("nav").prepend(prev_btn);
+        instance.renderQuestion(
+          instance.feedback && instance.state.items[instance.current].input,
+        );
+        instance.emit("prev");
       };
   }
 }
@@ -74,35 +102,43 @@ export function prevButton({ instance, type }) {
 export function anytimeFinish({ instance, type }) {
   switch (type) {
     case "start":
+    case "prev":
     case "submit":
     case "next":
-      instance.element.querySelector('[data-on-click="finish"]').disabled =
-        false;
+      const finishBtn = instance.element.querySelector(
+        '[data-on-click="finish"]',
+      );
+      if (!finishBtn) return;
+      finishBtn.disabled = false;
+  }
+}
+
+export function noFinishButton({ instance, type }) {
+  switch (type) {
+    case "start":
+    case "prev":
+    case "submit":
+    case "next":
+      instance.element.querySelector('[data-on-click="finish"]').remove();
   }
 }
 
 export async function store({ instance, type }) {
   if (!instance.ccm.helper.isStore(instance.store)) return;
-  if (type === "start" && instance.key) instance.state.key = instance.key;
-  if (type === "submit") await instance.store.set(instance.state);
-}
 
-export async function restore({ instance, type }) {
-  const helper = instance.ccm.helper;
-  if (!helper.isStore(instance.store) || !helper.isKey(instance.key)) return;
-  if (type !== "start") return;
-  const state = await instance.store.get(instance.key);
-  if (!state) return;
-  instance.state = state;
-  instance.renderQuestion(false);
-}
-
-export async function resultMode({ instance, type }) {
-  if (type !== "start" && type !== "next") return;
-  if (!instance.state.items.every((item) => item.input)) return;
-  instance.renderQuestion(true);
-  instance.element.querySelector('[data-on-click="submit"]').remove();
-  instance.element.querySelector('[data-on-click="finish"]').remove();
+  switch (type) {
+    case "start":
+      instance.state.key = instance.key;
+      break;
+    case "submit":
+      await instance.store.set(instance.state);
+      break;
+    case "prev":
+    case "next":
+    case "finish":
+    case "exit":
+      if (!instance.feedback) await instance.store.set(instance.state);
+  }
 }
 
 export function analytics(event) {
@@ -112,17 +148,22 @@ export function analytics(event) {
 
 export async function restart({ instance, type }) {
   if (type !== "finish") return;
+  if (instance.feedback && (await loadState(instance)))
+    await instance.store.del(instance.key);
   await instance.start();
 }
 
 // explicitAnswer [Yes| |No]
-// skippable
 // summary
-// progress bar
+// progress bar (green/red/gray)
 // save user-specific
 // lang
+// sounds
+// paging [1|2|...|n]
+// routing
+// points
 
-export function escape(str) {
+function escape(str) {
   return String(str).replace(
     /[&<>"']/g,
     (char) =>
@@ -143,4 +184,12 @@ function shuffle(array) {
     [array[i], array[j]] = [array[j], array[i]];
   }
   return array;
+}
+
+async function loadState(instance) {
+  if (
+    instance.ccm.helper.isStore(instance.store) &&
+    instance.ccm.helper.isKey(instance.key)
+  )
+    return instance.store.get(instance.key);
 }

@@ -36,11 +36,11 @@ export function question(instance, showFeedback) {
           ${instance.labels.submit}
         </button>
         <button data-on-click="next"
-                ${(!showFeedback || instance.current >= instance.questions.length - 1) && "disabled"}>
+                ${((instance.feedback && !showFeedback) || instance.current >= instance.questions.length - 1) && "disabled"}>
           ${instance.labels.next}
         </button>
         <button data-on-click="finish"
-                ${(!showFeedback || instance.current < instance.questions.length - 1) && "disabled"}>
+                ${((instance.feedback && !showFeedback) || instance.current < instance.questions.length - 1) && "disabled"}>
           ${instance.labels.finish}
         </button>
       </nav>

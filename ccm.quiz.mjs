@@ -23,19 +23,19 @@ export const component = {
   },
   Instance: function () {
     this.init = async () => {
-      await emit("init");
+      await this.emit("init");
     };
 
     this.ready = async () => {
-      await emit("ready");
+      await this.emit("ready");
     };
 
     this.start = async () => {
-      await emit("before-start");
+      await this.emit("before-start");
       this.state = { items: this.questions.map(() => ({})) };
       this.current = 0;
       this.renderQuestion(false);
-      await emit("start");
+      await this.emit("start");
     };
 
     this.events = {
@@ -43,20 +43,20 @@ export const component = {
         if (!this.feedback) return;
         this.evaluate();
         this.renderQuestion(true);
-        emit("submit");
+        this.emit("submit");
       },
 
       next: () => {
         if (this.current >= this.questions.length - 1) return;
         if (!this.feedback) this.evaluate();
         this.current++;
-        this.renderQuestion();
-        emit("next");
+        this.renderQuestion(false);
+        this.emit("next");
       },
 
       finish: () => {
         if (!this.feedback) this.evaluate();
-        emit("finish");
+        this.emit("finish");
       },
     };
 
@@ -81,7 +81,7 @@ export const component = {
       );
     };
 
-    const emit = async (type, data) => {
+    this.emit = async (type, data) => {
       if (!this.onaction) return;
       const event = { instance: this, type, data };
       if (!Array.isArray(this.onaction)) this.onaction(event);
