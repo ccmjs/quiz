@@ -53,8 +53,27 @@ export function anytimeFinish({ instance, type }) {
 }
 
 export async function store({ instance, type }) {
-  if (type !== "finish") return;
-  await instance.store.set(instance.state);
+  if (!instance.ccm.helper.isStore(instance.store)) return;
+  if (type === "start" && instance.key) instance.state.key = instance.key;
+  if (type === "submit") await instance.store.set(instance.state);
+}
+
+export async function restore({ instance, type }) {
+  const helper = instance.ccm.helper;
+  if (!helper.isStore(instance.store) || !helper.isKey(instance.key)) return;
+  if (type !== "start") return;
+  const state = await instance.store.get(instance.key);
+  if (!state) return;
+  instance.state = state;
+  instance.renderQuestion(false);
+}
+
+export async function resultMode({ instance, type }) {
+  if (type !== "start" && type !== "next") return;
+  if (!instance.state.items.every((item) => item.input)) return;
+  instance.renderQuestion(true);
+  instance.element.querySelector('[data-on-click="submit"]').remove();
+  instance.element.querySelector('[data-on-click="finish"]').remove();
 }
 
 export function analytics(event) {
@@ -72,9 +91,7 @@ export async function restart({ instance, type }) {
 // navigation [prev|next]
 // summary
 // progress bar
-// save
 // save user-specific
-// result mode
 // lang
 
 export function escape(str) {

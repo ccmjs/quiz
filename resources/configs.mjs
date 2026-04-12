@@ -1,10 +1,11 @@
 export const demo = {
+  key: "demo",
   questions: [
     {
-      text: "Was ist <i>HTML</i>?",
+      text: "Was ist HTML?",
       type: "radio",
       description:
-        "Wählen Sie unter den folgenden Antworten die <b>richtige</b> Antwort aus.",
+        "Wählen Sie unter den folgenden Antworten die richtige Antwort aus.",
       answers: [
         {
           text: "ein internetfähiges Gerät",
@@ -32,7 +33,7 @@ export const demo = {
           text: "eine Stylesheet-Sprache",
         },
         {
-          text: "etwas <b>essbares</b>",
+          text: "etwas essbares",
         },
       ],
     },
@@ -312,7 +313,9 @@ export const demo = {
     // ["ccm.load", "././resources/actions.mjs#shuffleQuestions"],
     // ["ccm.load", "././resources/actions.mjs#randomAnswers"],
     ["ccm.load", "././resources/actions.mjs#anytimeFinish"],
-    ["ccm.load", "././resources/actions.mjs#store"],
+    // ["ccm.load", "././resources/actions.mjs#store"],
+    ["ccm.load", "././resources/actions.mjs#restore"],
+    ["ccm.load", "././resources/actions.mjs#resultMode"],
     ["ccm.load", "././resources/actions.mjs#analytics"],
     ["ccm.load", "././resources/actions.mjs#restart"],
   ],
