@@ -117,7 +117,6 @@ export async function restart({ instance, type }) {
 
 // explicitAnswer [Yes| |No]
 // skippable
-// navigation [prev|next]
 // summary
 // progress bar
 // save user-specific
