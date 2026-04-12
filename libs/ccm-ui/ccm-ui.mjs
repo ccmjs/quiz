@@ -101,7 +101,7 @@ export function render(content, element, instance) {
 }
 
 /**
- * INTERNAL: Binds declarative DOM events to instance actions.
+ * Binds declarative DOM events to instance actions.
  *
  * Convention:
  *   data-on-click="next"
@@ -109,10 +109,8 @@ export function render(content, element, instance) {
  *
  * Behavior:
  * - Calls instance.events[actionName] (if defined)
- *
- * @private
  */
-function bind(root, instance) {
+export function bind(root, instance) {
   if (!root || !instance) return;
 
   const handlers = instance.events || {};

@@ -1,23 +1,31 @@
 export async function startButton({ instance, type }) {
-  if (type !== "start" && type !== "submit" && type !== "next") return;
+  if (type === "start") {
+    instance.element.firstElementChild.hidden = true;
+    const start_btn = instance.ui.html`<button data-on-click="start">
+      ${instance.labels.start || "Start"}
+    </button>`;
+    instance.ui.bind(start_btn, instance);
+    instance.element.appendChild(start_btn);
+  }
 
-  const html = instance.ui.html;
-
-  const close_btn = html`<button>${instance.labels.close || "Close"}</button>`;
-  close_btn.addEventListener("click", instance.start);
-
-  if (type === "submit" || type === "next")
-    return instance.element.querySelector("nav").appendChild(close_btn);
-
-  const start_btn = html`<button>${instance.labels.start || "Start"}</button>`;
-  start_btn.addEventListener("click", () => {
-    start_btn.hidden = true;
-    instance.element.firstElementChild.hidden = false;
-    instance.element.querySelector("nav").appendChild(close_btn);
-  });
-
-  instance.element.firstElementChild.hidden = true;
-  instance.element.appendChild(start_btn);
+  switch (type) {
+    case "ready":
+      instance.events.start = () => {
+        instance.element.querySelector('[data-on-click="start"]').hidden = true;
+        instance.element.firstElementChild.hidden = false;
+      };
+      instance.events.exit = instance.start;
+      break;
+    case "start":
+    case "submit":
+    case "next":
+      const exit_btn = instance.ui.html`<button data-on-click="exit">
+        ${instance.labels.exit || "Exit"}
+      </button>`;
+      instance.ui.bind(exit_btn, instance);
+      instance.element.querySelector("nav").appendChild(exit_btn);
+      break;
+  }
 }
 
 export async function escapeHTML({ instance, type }) {
@@ -40,6 +48,27 @@ export async function shuffleQuestions({ instance, type }) {
 export function randomAnswers({ instance, type }) {
   if (type !== "before-start") return;
   instance.questions.forEach((question) => shuffle(question.answers));
+}
+
+export function prevButton({ instance, type }) {
+  const prev_btn = instance.ui
+    .html`<button data-on-click="prev" ${instance.current === 1 && "disabled"}>${instance.labels.prev || "Previous"}</button>`;
+  instance.ui.bind(prev_btn, instance);
+
+  switch (type) {
+    case "start":
+    case "submit":
+    case "next":
+      instance.element.querySelector("nav").prepend(prev_btn);
+      break;
+    case "ready":
+      instance.events.prev = () => {
+        if (instance.current === 0) return;
+        instance.current--;
+        instance.renderQuestion(instance.state.items[instance.current].input);
+        instance.element.querySelector("nav").prepend(prev_btn);
+      };
+  }
 }
 
 export function anytimeFinish({ instance, type }) {
