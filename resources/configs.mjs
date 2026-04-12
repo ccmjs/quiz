@@ -1,18 +1,10 @@
 export const demo = {
-  onaction: [
-    ["ccm.load", "././resources/actions.mjs#startButton"],
-    // ["ccm.load", "././resources/actions.mjs#shuffleQuestions"],
-    ["ccm.load", "././resources/actions.mjs#randomAnswers"],
-    ["ccm.load", "././resources/actions.mjs#anytimeFinish"],
-    ["ccm.load", "././resources/actions.mjs#analytics"],
-    ["ccm.load", "././resources/actions.mjs#restart"],
-  ],
   questions: [
     {
-      text: "Was ist HTML?",
+      text: "Was ist <i>HTML</i>?",
       type: "radio",
       description:
-        "Wählen Sie unter den folgenden Antworten die richtige Antwort aus.",
+        "Wählen Sie unter den folgenden Antworten die <b>richtige</b> Antwort aus.",
       answers: [
         {
           text: "ein internetfähiges Gerät",
@@ -40,7 +32,7 @@ export const demo = {
           text: "eine Stylesheet-Sprache",
         },
         {
-          text: "etwas essbares",
+          text: "etwas <b>essbares</b>",
         },
       ],
     },
@@ -277,38 +269,52 @@ export const demo = {
       ],
     },
     {
-      text: "In welcher Version liegt HTML aktuell vor?",
-      type: "radio",
+      text: "Welche der HTML-Tags dienen zur Darstellung von Listen?",
+      description: "<b style='color: orangered;'>Mehrfachauswahl möglich</b>",
+      type: "checkbox",
       answers: [
         {
-          text: "HTML+",
+          text: "&lt;audio&gt;",
         },
         {
-          text: "HTML 2",
+          text: "&lt;img&gt;",
         },
         {
-          text: "HTML 3",
-        },
-        {
-          text: "HTML 4",
-        },
-        {
-          text: "HTML5",
+          text: "&lt;li&gt;",
           correct: true,
         },
         {
-          text: "HTML6",
+          text: "&lt;ol&gt;",
+          correct: true,
         },
         {
-          text: "HTML10",
+          text: "&lt;table&gt;",
         },
         {
-          text: "XHTML 1",
+          text: "&lt;td&gt;",
         },
         {
-          text: "XHTML 2",
+          text: "&lt;tr&gt;",
+        },
+        {
+          text: "&lt;ul&gt;",
+          correct: true,
+        },
+        {
+          text: "&lt;video&gt;",
         },
       ],
     },
   ],
+  onaction: [
+    // ["ccm.load", "././resources/actions.mjs#startButton"],
+    // ["ccm.load", "././resources/actions.mjs#escapeHTML"],
+    // ["ccm.load", "././resources/actions.mjs#shuffleQuestions"],
+    // ["ccm.load", "././resources/actions.mjs#randomAnswers"],
+    ["ccm.load", "././resources/actions.mjs#anytimeFinish"],
+    ["ccm.load", "././resources/actions.mjs#store"],
+    ["ccm.load", "././resources/actions.mjs#analytics"],
+    ["ccm.load", "././resources/actions.mjs#restart"],
+  ],
+  store: ["ccm.store", { name: "quiz" }],
 };

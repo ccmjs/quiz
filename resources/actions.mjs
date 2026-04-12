@@ -20,16 +20,26 @@ export async function startButton({ instance, type }) {
   instance.element.appendChild(start_btn);
 }
 
+export async function escapeHTML({ instance, type }) {
+  if (type !== "ready") return;
+  instance.questions.forEach((question) => {
+    question.text = escape(question.text);
+    if (question.description)
+      question.description = escape(question.description);
+    question.answers.forEach((answer) => {
+      answer.text = escape(answer.text);
+    });
+  });
+}
+
 export async function shuffleQuestions({ instance, type }) {
   if (type !== "before-start") return;
-  instance.questions = instance.questions.sort(() => Math.random() - 0.5);
+  shuffle(instance.questions);
 }
 
 export function randomAnswers({ instance, type }) {
   if (type !== "before-start") return;
-  instance.questions.forEach((question) => {
-    question.answers = question.answers.sort(() => Math.random() - 0.5);
-  });
+  instance.questions.forEach((question) => shuffle(question.answers));
 }
 
 export function anytimeFinish({ instance, type }) {
@@ -42,6 +52,11 @@ export function anytimeFinish({ instance, type }) {
   }
 }
 
+export async function store({ instance, type }) {
+  if (type !== "finish") return;
+  await instance.store.set(instance.state);
+}
+
 export function analytics(event) {
   console.log("Action:", event.type, event.instance.state, event.data);
   // with datastore
@@ -52,7 +67,6 @@ export async function restart({ instance, type }) {
   await instance.start();
 }
 
-// escapeHTML
 // explicitAnswer [Yes| |No]
 // skippable
 // navigation [prev|next]
@@ -62,3 +76,26 @@ export async function restart({ instance, type }) {
 // save user-specific
 // result mode
 // lang
+
+export function escape(str) {
+  return String(str).replace(
+    /[&<>"']/g,
+    (char) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[char],
+  );
+}
+
+function shuffle(array) {
+  // Fisher–Yates algorithm
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
