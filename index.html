@@ -1,7 +1,13 @@
 <!DOCTYPE html>
 <meta charset="UTF-8">
 <body>
-<script src="././libs/ccmjs/ccm.js"></script>
-<script>
-  ccm.start("././ccm.quiz.mjs", ["ccm.load", "././resources/configs.mjs#demo"], document.body);
-</script>
+  <div id="quiz1"></div>
+  <hr>
+  <div id="quiz2"></div>
+
+  <script src="././libs/ccmjs/ccm.js"></script>
+  <script type="module">
+    ccm.start("././ccm.quiz.mjs", {}, document.getElementById("quiz1"));
+    ccm.start("././ccm.quiz.mjs", ["ccm.load", "././resources/configs.mjs#demo"], document.getElementById("quiz2"));
+  </script>
+</body>

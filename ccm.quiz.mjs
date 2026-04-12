@@ -5,7 +5,43 @@ export const component = {
     ui: ["ccm.load", "././libs/ccm-ui/ccm-ui.mjs"],
     html: ["ccm.load", "././resources/templates.mjs"],
     css: ["ccm.load", "././resources/styles.css"],
-    questions: [],
+    questions: [
+      {
+        text: "Question 1",
+        description: "Does this demo work?",
+        type: "radio",
+        answers: [
+          {
+            text: "Yes",
+            correct: true,
+          },
+          {
+            text: "No",
+            comment: "Example comment for wrong answer",
+          },
+        ],
+      },
+      {
+        text: "Question 2",
+        description: "Which question is this",
+        type: "checkbox",
+        answers: [
+          {
+            text: "First",
+            comment:
+              "This answer is wrong, because this is the second and last question.",
+          },
+          {
+            text: "Second",
+            correct: true,
+          },
+          {
+            text: "Last",
+            correct: true,
+          },
+        ],
+      },
+    ],
     feedback: true,
     labels: {
       submit: "Submit",
@@ -13,12 +49,18 @@ export const component = {
       finish: "Finish",
     },
     onaction: [
+      // ["ccm.load", "././resources/actions.mjs#restore"],
+      // ["ccm.load", "././resources/actions.mjs#skippable"],
       // ["ccm.load", "././resources/actions.mjs#startButton"],
+      // ["ccm.load", "././resources/actions.mjs#escapeHTML"],
       // ["ccm.load", "././resources/actions.mjs#shuffleQuestions"],
       // ["ccm.load", "././resources/actions.mjs#randomAnswers"],
+      // ["ccm.load", "././resources/actions.mjs#prevButton"],
       // ["ccm.load", "././resources/actions.mjs#anytimeFinish"],
-      // ["ccm.load", "././resources/actions.mjs#analytics"],
-      // ["ccm.load", "././resources/actions.mjs#restart"],
+      // ["ccm.load", "././resources/actions.mjs#noFinishButton"],
+      // ["ccm.load", "././resources/actions.mjs#store"],
+      ["ccm.load", "././resources/actions.mjs#analytics"],
+      ["ccm.load", "././resources/actions.mjs#restart"],
     ],
   },
   Instance: function () {
