@@ -1,19 +1,19 @@
-export function question(instance, showFeedback) {
-  const question = instance.questions[instance.current];
-  return instance.ui.html`
+export function question(app, showFeedback) {
+  const question = app.questions[app.current];
+  return app.ui.html`
     <main>
       <h1>${question.text}</h1>
       <p>${question.description}</p>
       
       <ul>
         ${question.answers.map(
-          (answer, i) => instance.ui.html`
+          (answer, i) => app.ui.html`
             <li ${showFeedback && answer.correct && 'class="correct"'}>
               <label>
                 <input type="${question.type}"
                        class="input"
                        name="question"
-                       ${instance.state.items[instance.current].input?.includes(i) && "checked"}
+                       ${app.state.items[app.current].input?.includes(i) && "checked"}
                        ${showFeedback && "disabled"}>
                 <span>${answer.text}</span>
               </label>
@@ -32,16 +32,16 @@ export function question(instance, showFeedback) {
       <nav>
         <button data-on-click="submit"
                 ${showFeedback && "disabled"}
-                ${!instance.feedback && "hidden"}>
-          ${instance.labels.submit}
+                ${!app.feedback && "hidden"}>
+          ${app.labels.submit}
         </button>
         <button data-on-click="next"
-                ${((instance.feedback && !showFeedback) || instance.current >= instance.questions.length - 1) && "disabled"}>
-          ${instance.labels.next}
+                ${((app.feedback && !showFeedback) || app.current >= app.questions.length - 1) && "disabled"}>
+          ${app.labels.next}
         </button>
         <button data-on-click="finish"
-                ${((instance.feedback && !showFeedback) || instance.current < instance.questions.length - 1) && "disabled"}>
-          ${instance.labels.finish}
+                ${((app.feedback && !showFeedback) || app.current < app.questions.length - 1) && "disabled"}>
+          ${app.labels.finish}
         </button>
       </nav>
     </main>
