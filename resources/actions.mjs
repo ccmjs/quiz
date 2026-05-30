@@ -40,7 +40,7 @@ export async function startButton({ instance, type }) {
       instance.element.querySelector("nav").appendChild(exitBtn);
       break;
     case "ready":
-      instance.events["startbtn"] = () => {
+      instance.events.startbtn = () => {
         instance.element.querySelector('[data-on-click="startbtn"]').hidden =
           true;
         instance.element.firstElementChild.hidden = false;
@@ -72,6 +72,8 @@ export async function shuffleQuestions({ instance, type }) {
 
 export async function randomAnswers({ instance, type }) {
   if (type !== "before-start") return;
+  const state = await loadState(instance);
+  if (state) return;
   instance.questions.forEach((question) => shuffle(question.answers));
 }
 
