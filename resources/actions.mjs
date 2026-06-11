@@ -94,7 +94,7 @@ export function prevButton({ instance, type }) {
     case "ready":
       instance.events.prev = () => {
         if (instance.current === 0) return;
-        if (!instance.feedback) this.evaluate();
+        if (!instance.feedback) instance.evaluate();
         instance.current--;
         instance.renderQuestion(
           instance.feedback && instance.state.items[instance.current].input,
@@ -139,7 +139,11 @@ export async function store({ instance, type }) {
       await save(instance);
       break;
     case "prev":
+      if (!instance.feedback) await save(instance, 1);
+      break;
     case "next":
+      if (!instance.feedback) await save(instance, -1);
+      break;
     case "finish":
     case "exit":
       if (!instance.feedback) await save(instance);
@@ -182,14 +186,15 @@ function escape(str) {
   );
 }
 
-async function save(instance) {
-  const item = instance.state.items[instance.current];
+async function save(instance, diff = 0) {
+  const question_index = instance.current + diff;
+  const item = instance.state.items[question_index];
   item.input = item.input.map(
-    (input) => instance.questions[instance.current].answers[input].i || input,
+    (input) => instance.questions[question_index].answers[input].i || input,
   );
   item.solution = item.solution.map(
     (solution) =>
-      instance.questions[instance.current].answers[solution].i || solution,
+      instance.questions[question_index].answers[solution].i || solution,
   );
   await instance.store.set(instance.state);
 }

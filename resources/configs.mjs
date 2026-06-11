@@ -308,7 +308,7 @@ export const demo = {
       ],
     },
   ],
-  feedback: true,
+  feedback: false,
   onaction: [
     ["ccm.load", "././resources/actions.mjs#restore"],
     // ["ccm.load", "././resources/actions.mjs#escapeHTML"],
