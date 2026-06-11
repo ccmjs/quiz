@@ -8,6 +8,33 @@ export async function restore({ instance, type }) {
   );
 }
 
+export async function escapeHTML({ instance, type }) {
+  if (type !== "ready") return;
+  instance.questions.forEach((question) => {
+    question.text = escape(question.text);
+    if (question.description)
+      question.description = escape(question.description);
+    question.answers.forEach((answer) => {
+      answer.text = escape(answer.text);
+    });
+  });
+}
+
+export async function shuffleQuestions({ instance, type }) {
+  if (type !== "before-start") return;
+  shuffle(instance.questions);
+}
+
+export async function randomAnswers({ instance, type }) {
+  if (type !== "start") return;
+  if (await loadState(instance)) return;
+  instance.questions.forEach((question) => {
+    question.answers.forEach((answer, i) => (answer.i = i));
+    shuffle(question.answers);
+  });
+  instance.renderQuestion(instance.state.items[0].input);
+}
+
 export function skippable({ instance, type }) {
   switch (type) {
     case "next":
@@ -51,30 +78,6 @@ export async function startButton({ instance, type }) {
         instance.emit("exit");
       };
   }
-}
-
-export async function escapeHTML({ instance, type }) {
-  if (type !== "ready") return;
-  instance.questions.forEach((question) => {
-    question.text = escape(question.text);
-    if (question.description)
-      question.description = escape(question.description);
-    question.answers.forEach((answer) => {
-      answer.text = escape(answer.text);
-    });
-  });
-}
-
-export async function shuffleQuestions({ instance, type }) {
-  if (type !== "before-start") return;
-  shuffle(instance.questions);
-}
-
-export async function randomAnswers({ instance, type }) {
-  if (type !== "before-start") return;
-  const state = await loadState(instance);
-  if (state) return;
-  instance.questions.forEach((question) => shuffle(question.answers));
 }
 
 export function prevButton({ instance, type }) {
@@ -133,13 +136,13 @@ export async function store({ instance, type }) {
       instance.state.key = instance.key;
       break;
     case "submit":
-      await instance.store.set(instance.state);
+      await save(instance);
       break;
     case "prev":
     case "next":
     case "finish":
     case "exit":
-      if (!instance.feedback) await instance.store.set(instance.state);
+      if (!instance.feedback) await save(instance);
   }
 }
 
@@ -177,6 +180,18 @@ function escape(str) {
         "'": "&#39;",
       })[char],
   );
+}
+
+async function save(instance) {
+  const item = instance.state.items[instance.current];
+  item.input = item.input.map(
+    (input) => instance.questions[instance.current].answers[input].i || input,
+  );
+  item.solution = item.solution.map(
+    (solution) =>
+      instance.questions[instance.current].answers[solution].i || solution,
+  );
+  await instance.store.set(instance.state);
 }
 
 function shuffle(array) {
