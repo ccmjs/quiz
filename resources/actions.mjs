@@ -21,15 +21,18 @@ export async function escapeHTML({ instance, type }) {
 }
 
 export async function shuffleQuestions({ instance, type }) {
-  if (type !== "before-start") return;
+  if (type !== "start") return;
+  if (await loadState(instance)) return;
+  instance.questions.forEach((question, i) => (question.originalIndex = i));
   shuffle(instance.questions);
+  instance.renderQuestion(instance.state.items[0].input);
 }
 
 export async function randomAnswers({ instance, type }) {
   if (type !== "start") return;
   if (await loadState(instance)) return;
   instance.questions.forEach((question) => {
-    question.answers.forEach((answer, i) => (answer.i = i));
+    question.answers.forEach((answer, i) => (answer.originalIndex = i));
     shuffle(question.answers);
   });
   instance.renderQuestion(instance.state.items[0].input);
@@ -189,14 +192,34 @@ function escape(str) {
 async function save(instance, diff = 0) {
   const question_index = instance.current + diff;
   const item = instance.state.items[question_index];
-  item.input = item.input.map(
-    (input) => instance.questions[question_index].answers[input].i || input,
-  );
-  item.solution = item.solution.map(
-    (solution) =>
-      instance.questions[question_index].answers[solution].i || solution,
-  );
-  await instance.store.set(instance.state);
+
+  if (instance.questions[question_index].answers[0].originalIndex) {
+    item.input = item.input.map(
+      (input) =>
+        instance.questions[question_index].answers[input].originalIndex ||
+        input,
+    );
+    item.solution = item.solution.map(
+      (solution) =>
+        instance.questions[question_index].answers[solution].originalIndex ||
+        solution,
+    );
+  }
+
+  let state = instance.state;
+
+  if (instance.questions[question_index].originalIndex !== undefined) {
+    state = instance.ccm.helper.clone(state);
+    state.items = instance.state.items
+      .map((item, i) => ({
+        item,
+        index: instance.questions[i].originalIndex,
+      }))
+      .sort((a, b) => a.index - b.index)
+      .map((entry) => entry.item);
+  }
+
+  await instance.store.set(state);
 }
 
 function shuffle(array) {

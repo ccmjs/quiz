@@ -308,11 +308,11 @@ export const demo = {
       ],
     },
   ],
-  feedback: false,
+  feedback: true,
   onaction: [
     ["ccm.load", "././resources/actions.mjs#restore"],
     // ["ccm.load", "././resources/actions.mjs#escapeHTML"],
-    // ["ccm.load", "././resources/actions.mjs#shuffleQuestions"],
+    ["ccm.load", "././resources/actions.mjs#shuffleQuestions"],
     ["ccm.load", "././resources/actions.mjs#randomAnswers"],
     ["ccm.load", "././resources/actions.mjs#skippable"],
     ["ccm.load", "././resources/actions.mjs#startButton"],
