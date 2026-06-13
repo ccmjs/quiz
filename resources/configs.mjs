@@ -276,34 +276,34 @@ export const demo = {
       type: "checkbox",
       answers: [
         {
-          text: "&lt;audio&gt;",
+          text: "<audio>",
         },
         {
-          text: "&lt;img&gt;",
+          text: "<img>",
         },
         {
-          text: "&lt;li&gt;",
+          text: "<li>",
           correct: true,
         },
         {
-          text: "&lt;ol&gt;",
+          text: "<ol>",
           correct: true,
         },
         {
-          text: "&lt;table&gt;",
+          text: "<table>",
         },
         {
-          text: "&lt;td&gt;",
+          text: "<td>",
         },
         {
-          text: "&lt;tr&gt;",
+          text: "<tr>",
         },
         {
-          text: "&lt;ul&gt;",
+          text: "<ul>",
           correct: true,
         },
         {
-          text: "&lt;video&gt;",
+          text: "<video>",
         },
       ],
     },
@@ -311,7 +311,7 @@ export const demo = {
   feedback: true,
   onaction: [
     ["ccm.load", "././resources/actions.mjs#restore"],
-    // ["ccm.load", "././resources/actions.mjs#escapeHTML"],
+    ["ccm.load", "././resources/actions.mjs#escapeHTML"],
     ["ccm.load", "././resources/actions.mjs#shuffleQuestions"],
     ["ccm.load", "././resources/actions.mjs#randomAnswers"],
     ["ccm.load", "././resources/actions.mjs#skippable"],
