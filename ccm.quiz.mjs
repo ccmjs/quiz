@@ -45,7 +45,7 @@ export const component = {
     },
 
     // Extension points
-    onaction: [
+    extensions: [
       // ["ccm.load", "././resources/actions.mjs#restore"],
       // ["ccm.load", "././resources/actions.mjs#skippable"],
       // ["ccm.load", "././resources/actions.mjs#startButton"],
@@ -55,6 +55,7 @@ export const component = {
       // ["ccm.load", "././resources/actions.mjs#prevButton"],
       // ["ccm.load", "././resources/actions.mjs#anytimeFinish"],
       // ["ccm.load", "././resources/actions.mjs#noFinishButton"],
+      // ["ccm.load", "././resources/actions.mjs#triState"],
       // ["ccm.load", "././resources/actions.mjs#store"],
       ["ccm.load", "././resources/actions.mjs#analytics"],
       ["ccm.load", "././resources/actions.mjs#restart"],
@@ -101,10 +102,9 @@ export const component = {
 
     /** Starts or restarts the quiz */
     this.start = async () => {
-      await this.emit("before-start");
       this.state = { items: this.questions.map(() => ({})) };
       this.current = 0;
-      this.renderQuestion(false);
+      await this.renderQuestion(false);
       await this.emit("start");
     };
 
@@ -115,26 +115,26 @@ export const component = {
      */
     this.events = {
       /** Evaluates the current question and shows feedback. */
-      submit: () => {
+      submit: async () => {
         if (!this.feedback) return;
-        this.evaluate();
-        this.renderQuestion(true);
-        this.emit("submit");
+        await this.evaluate();
+        await this.renderQuestion(true);
+        await this.emit("submit");
       },
 
       /** Advances to the next question. */
-      next: () => {
+      next: async () => {
         if (this.current >= this.questions.length - 1) return;
-        if (!this.feedback) this.evaluate();
+        if (!this.feedback) await this.evaluate();
         this.current++;
-        this.renderQuestion(false);
-        this.emit("next");
+        await this.renderQuestion(false);
+        await this.emit("next");
       },
 
       /** Finishes the quiz. */
-      finish: () => {
-        if (!this.feedback) this.evaluate();
-        this.emit("finish");
+      finish: async () => {
+        if (!this.feedback) await this.evaluate();
+        await this.emit("finish");
       },
     };
 
@@ -142,57 +142,68 @@ export const component = {
      * Renders the current question.
      * @param {boolean} showFeedback
      */
-    this.renderQuestion = (showFeedback) => {
+    this.renderQuestion = async (showFeedback) => {
       this.ui.render(
         this.html.question(this, showFeedback),
         this.element,
         this,
       );
+      await this.emit("render");
     };
 
     /** Evaluates the current question and stores user input and solution data in the result state. */
-    this.evaluate = () => {
+    this.evaluate = async () => {
+      const question = this.questions[this.current];
       const item = this.state.items[this.current];
-      const inputs = [...this.element.querySelectorAll(".input")];
+      const inputs = this.element.querySelectorAll(".input");
 
-      item.input = [];
-      inputs.forEach((input, i) => input.checked && item.input.push(i));
+      if (question.type === "radio") {
+        inputs.forEach((input, i) => input.checked && (item.input = i + 1));
+        question.answers.forEach(
+          (answer, i) => answer.correct && (item.solution = i + 1),
+        );
+      } else {
+        item.input = [];
+        inputs.forEach((input) => item.input.push(+input.checked));
+        item.solution = [];
+        question.answers.forEach((answer) =>
+          item.solution.push(+!!answer.correct),
+        );
+      }
 
-      item.solution = [];
-      this.questions[this.current].answers.forEach(
-        (answer, i) => answer.correct && item.solution.push(i),
-      );
+      await this.emit("evaluate");
     };
 
     /**
-     * Emits a component action.
+     * Emits an extension event.
      *
-     * Supported action types:
+     * Extensions can react to the following events:
      *
      * - init
      * - ready
-     * - before-start
      * - start
+     * - render
      * - submit
+     * - evaluate
      * - next
      * - finish
      *
-     * Each configured action receives:
+     * Each configured extension receives an object:
      *
-     * { instance, type, data }
+     * {
+     *   instance, // component instance
+     *   type      // emitted event type
+     * }
      *
-     * Actions are executed sequentially.
+     * Extensions are executed sequentially.
      *
-     * @param {string} type
-     * @param {*} [data]
+     * @param {string} type - emitted event type
      */
-    this.emit = async (type, data) => {
-      const actions = Array.isArray(this.onaction)
-        ? this.onaction
-        : [this.onaction];
+    this.emit = async (type) => {
+      const extensions = [].concat(this.extensions || []);
 
-      for (const action of actions)
-        action && (await action({ instance: this, type, data }));
+      for (const extension of extensions)
+        extension && (await extension({ instance: this, type }));
     };
   },
 };

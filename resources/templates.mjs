@@ -1,5 +1,6 @@
 export function question(app, showFeedback) {
   const question = app.questions[app.current];
+  const item = app.state.items[app.current];
   return app.ui.html`
     <main>
       <h1>${question.text}</h1>
@@ -13,15 +14,15 @@ export function question(app, showFeedback) {
                 <input type="${question.type}"
                        class="input"
                        name="question"
-                       ${app.state.items[app.current].input?.includes(i) && "checked"}
+                       ${(question.type === "radio" ? item.input === i + 1 : item.input?.[i]) && "checked"}
                        ${showFeedback && "disabled"}>
                 <span>${answer.text}</span>
               </label>
-              <span class="comment" ${(!showFeedback || !question.answers[i].comment) && "hidden"}>
+              <span class="comment" ${(!showFeedback || !answer.comment) && "hidden"}>
                 <label>
                   <input type="checkbox" hidden>
                   <span>ℹ️</span>
-                  <div>${question.answers[i].comment}</div>
+                  <div>${answer.comment}</div>
                 </label>
               </span>
             </li>
