@@ -46,15 +46,15 @@ export const component = {
 
     // Extension points
     extensions: [
-      // ["ccm.load", "././resources/actions.mjs#restore"],
-      // ["ccm.load", "././resources/actions.mjs#skippable"],
-      // ["ccm.load", "././resources/actions.mjs#startButton"],
       // ["ccm.load", "././resources/actions.mjs#escapeHTML"],
+      // ["ccm.load", "././resources/actions.mjs#restore"],
       // ["ccm.load", "././resources/actions.mjs#shuffleQuestions"],
       // ["ccm.load", "././resources/actions.mjs#randomAnswers"],
-      // ["ccm.load", "././resources/actions.mjs#prevButton"],
-      // ["ccm.load", "././resources/actions.mjs#anytimeFinish"],
+      // ["ccm.load", "././resources/actions.mjs#startButton"],
       // ["ccm.load", "././resources/actions.mjs#noFinishButton"],
+      // ["ccm.load", "././resources/actions.mjs#skippable"],
+      // ["ccm.load", "././resources/actions.mjs#anytimeFinish"],
+      // ["ccm.load", "././resources/actions.mjs#prevButton"],
       // ["ccm.load", "././resources/actions.mjs#triState"],
       // ["ccm.load", "././resources/actions.mjs#store"],
       ["ccm.load", "././resources/actions.mjs#analytics"],
