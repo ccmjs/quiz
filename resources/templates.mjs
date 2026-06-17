@@ -1,6 +1,6 @@
-export function question(app, showFeedback) {
-  const question = app.questions[app.current];
-  const item = app.state.items[app.current];
+export function question(app) {
+  const question = app.state.questions[app.current];
+  const showFeedback = question.evaluated && app.feedback;
   return app.ui.html`
     <main>
       <h1>${question.text}</h1>
@@ -13,15 +13,15 @@ export function question(app, showFeedback) {
               <label>
                 <input type="${question.type}"
                        class="input"
-                       name="question"
-                       ${(question.type === "radio" ? item.input === i + 1 : item.input?.[i]) && "checked"}
-                       ${showFeedback && "disabled"}>
+                       ${question.type === "radio" && 'name="question"'}
+                       ${answer.selected && "checked"}
+                       ${question.evaluated && "disabled"}>
                 <span>${answer.text}</span>
               </label>
               <span class="comment" ${(!showFeedback || !answer.comment) && "hidden"}>
                 <label>
                   <input type="checkbox" hidden>
-                  <span>ℹ️</span>
+                  <span><small>ℹ️</small></span>
                   <div>${answer.comment}</div>
                 </label>
               </span>
@@ -37,11 +37,11 @@ export function question(app, showFeedback) {
           ${app.labels.submit}
         </button>
         <button data-on-click="next"
-                ${((app.feedback && !showFeedback) || app.current >= app.questions.length - 1) && "disabled"}>
+                ${((app.feedback && !question.evaluated) || app.current >= app.state.questions.length - 1) && "disabled"}>
           ${app.labels.next}
         </button>
         <button data-on-click="finish"
-                ${((app.feedback && !showFeedback) || app.current < app.questions.length - 1) && "disabled"}>
+                ${((app.feedback && !question.evaluated) || app.current < app.state.questions.length - 1) && "disabled"}>
           ${app.labels.finish}
         </button>
       </nav>

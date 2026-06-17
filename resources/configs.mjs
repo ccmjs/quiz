@@ -237,7 +237,6 @@ export const demo = {
     {
       text: "Wer arbeitet alles an der Weiterentwicklung von HTML?",
       type: "checkbox",
-      description: "<b style='color: orangered;'>Mehrfachauswahl möglich</b>",
       answers: [
         {
           text: "das World Wide Web Consortium (W3C)",
@@ -272,7 +271,6 @@ export const demo = {
     },
     {
       text: "Welche der HTML-Tags dienen zur Darstellung von Listen?",
-      description: "<b style='color: orangered;'>Mehrfachauswahl möglich</b>",
       type: "checkbox",
       answers: [
         {
@@ -310,15 +308,15 @@ export const demo = {
   ],
   feedback: true,
   extensions: [
-    ["ccm.load", "././resources/actions.mjs#restore"],
     ["ccm.load", "././resources/actions.mjs#escapeHTML"],
+    ["ccm.load", "././resources/actions.mjs#restore"],
     ["ccm.load", "././resources/actions.mjs#shuffleQuestions"],
     ["ccm.load", "././resources/actions.mjs#randomAnswers"],
-    ["ccm.load", "././resources/actions.mjs#skippable"],
     ["ccm.load", "././resources/actions.mjs#startButton"],
-    ["ccm.load", "././resources/actions.mjs#prevButton"],
-    ["ccm.load", "././resources/actions.mjs#anytimeFinish"],
     ["ccm.load", "././resources/actions.mjs#noFinishButton"],
+    ["ccm.load", "././resources/actions.mjs#skippable"],
+    ["ccm.load", "././resources/actions.mjs#anytimeFinish"],
+    ["ccm.load", "././resources/actions.mjs#prevButton"],
     ["ccm.load", "././resources/actions.mjs#triState"],
     ["ccm.load", "././resources/actions.mjs#store"],
     ["ccm.load", "././resources/actions.mjs#analytics"],

@@ -62,34 +62,6 @@ export const component = {
     ],
   },
   Instance: function () {
-    /**
-     * Current quiz result data.
-     * Filled during runtime.
-     *
-     * Structure:
-     * {
-     *   items: [
-     *     {
-     *       input: [0, 2],
-     *       solution: [0]
-     *     }
-     *   ]
-     * }
-     *
-     * input    = selected answer indices
-     * solution = correct answer indices
-     *
-     * @type {{items:Array<{input?:number[], solution?:number[]}>}}
-     */
-    this.state = { items: [] };
-
-    /**
-     * Index of the currently displayed question. Zero-based.
-     *
-     * @type {number}
-     */
-    this.current = 0;
-
     /** Lifecycle hook */
     this.init = async () => {
       await this.emit("init");
@@ -102,9 +74,10 @@ export const component = {
 
     /** Starts or restarts the quiz */
     this.start = async () => {
-      this.state = { items: this.questions.map(() => ({})) };
+      await this.emit("before-start");
+      if (!this.state) this.state = { questions: this.questions };
       this.current = 0;
-      await this.renderQuestion(false);
+      await this.renderQuestion();
       await this.emit("start");
     };
 
@@ -118,13 +91,13 @@ export const component = {
       submit: async () => {
         if (!this.feedback) return;
         await this.evaluate();
-        await this.renderQuestion(true);
+        await this.renderQuestion();
         await this.emit("submit");
       },
 
       /** Advances to the next question. */
       next: async () => {
-        if (this.current >= this.questions.length - 1) return;
+        if (this.current >= this.state.questions.length - 1) return;
         if (!this.feedback) await this.evaluate();
         this.current++;
         await this.renderQuestion(false);
@@ -140,37 +113,20 @@ export const component = {
 
     /**
      * Renders the current question.
-     * @param {boolean} showFeedback
      */
-    this.renderQuestion = async (showFeedback) => {
-      this.ui.render(
-        this.html.question(this, showFeedback),
-        this.element,
-        this,
-      );
+    this.renderQuestion = async () => {
+      this.ui.render(this.html.question(this), this.element, this);
       await this.emit("render");
     };
 
     /** Evaluates the current question and stores user input and solution data in the result state. */
     this.evaluate = async () => {
-      const question = this.questions[this.current];
-      const item = this.state.items[this.current];
+      const question = this.state.questions[this.current];
       const inputs = this.element.querySelectorAll(".input");
-
-      if (question.type === "radio") {
-        inputs.forEach((input, i) => input.checked && (item.input = i + 1));
-        question.answers.forEach(
-          (answer, i) => answer.correct && (item.solution = i + 1),
-        );
-      } else {
-        item.input = [];
-        inputs.forEach((input) => item.input.push(+input.checked));
-        item.solution = [];
-        question.answers.forEach((answer) =>
-          item.solution.push(+!!answer.correct),
-        );
-      }
-
+      inputs.forEach(
+        (input, i) => input.checked && (question.answers[i].selected = true),
+      );
+      question.evaluated = true;
       await this.emit("evaluate");
     };
 
@@ -181,6 +137,7 @@ export const component = {
      *
      * - init
      * - ready
+     * - before-start
      * - start
      * - render
      * - submit
@@ -191,7 +148,7 @@ export const component = {
      * Each configured extension receives an object:
      *
      * {
-     *   instance, // component instance
+     *   app,      // component instance
      *   type      // emitted event type
      * }
      *
@@ -203,7 +160,7 @@ export const component = {
       const extensions = [].concat(this.extensions || []);
 
       for (const extension of extensions)
-        extension && (await extension({ instance: this, type }));
+        extension && (await extension({ app: this, type }));
     };
   },
 };

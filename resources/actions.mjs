@@ -1,18 +1,6 @@
-export async function restore({ instance, type }) {
-  if (type === "start") {
-    const state = await loadState(instance);
-    if (!state) return;
-    instance.state = state;
-  }
-  if (type === "start" || type === "next")
-    instance.renderQuestion(
-      instance.feedback && instance.state.items[instance.current].input,
-    );
-}
-
-export async function escapeHTML({ instance, type }) {
+export async function escapeHTML({ app, type }) {
   if (type !== "ready") return;
-  instance.questions.forEach((question) => {
+  app.questions.forEach((question) => {
     question.text = escape(question.text);
     if (question.description)
       question.description = escape(question.description);
@@ -20,168 +8,146 @@ export async function escapeHTML({ instance, type }) {
   });
 }
 
-export async function shuffleQuestions({ instance, type }) {
+export async function restore({ app, type }) {
+  if (type !== "before-start") return;
+  if (!app.ccm.helper.isStore(app.store) || !app.ccm.helper.isKey(app.key))
+    return;
+  const state = await app.store.get(app.key);
+  if (state) app.state = state;
+}
+
+export async function shuffleQuestions({ app, type }) {
   if (type !== "start") return;
-  if (await loadState(instance)) return;
-  instance.questions.forEach((question, i) => (question.originalNr = i + 1));
-  shuffle(instance.questions);
-  instance.renderQuestion(instance.state.items[0].input);
+  shuffle(app.state.questions);
+  await app.renderQuestion();
 }
 
-export async function randomAnswers({ instance, type }) {
+export async function randomAnswers({ app, type }) {
   if (type !== "start") return;
-  if (await loadState(instance)) return;
-  instance.questions.forEach((question) => {
-    question.answers.forEach((answer, i) => (answer.originalNr = i + 1));
-    shuffle(question.answers);
-  });
-  instance.renderQuestion(instance.state.items[0].input);
+  app.state.questions.forEach((question) => shuffle(question.answers));
+  app.renderQuestion();
 }
 
-export function skippable({ instance, type }) {
-  if (type !== "render") return;
-  if (instance.current < instance.questions.length - 1)
-    instance.element.querySelector('[data-on-click="next"]').disabled = false;
-}
-
-export async function startButton({ instance, type }) {
+export async function startButton({ app, type }) {
   switch (type) {
     case "start":
-      instance.element.firstElementChild.hidden = true;
-      const startBtn = instance.ui.html`<button data-on-click="startbtn">
-        ${instance.labels.start || "Start"}
+      app.element.firstElementChild.hidden = true;
+      const startBtn = app.ui.html`<button data-on-click="startbtn">
+        ${app.labels.start || "Start"}
       </button>`;
-      instance.ui.bind(startBtn, instance);
-      instance.element.appendChild(startBtn);
+      app.ui.bind(startBtn, app);
+      app.element.appendChild(startBtn);
       break;
     case "render":
-      const exitBtn = instance.ui.html`<button data-on-click="exit">
-        ${instance.labels.exit || "Exit"}
+      const exitBtn = app.ui.html`<button data-on-click="exit">
+        ${app.labels.exit || "Exit"}
       </button>`;
-      instance.ui.bind(exitBtn, instance);
-      instance.element.querySelector("nav").appendChild(exitBtn);
+      app.ui.bind(exitBtn, app);
+      app.element.querySelector("nav").appendChild(exitBtn);
       break;
     case "ready":
-      instance.events.startbtn = () => {
-        instance.element.querySelector('[data-on-click="startbtn"]').hidden =
-          true;
-        instance.element.firstElementChild.hidden = false;
-        instance.emit("startbtn");
+      app.events.startbtn = () => {
+        app.element.querySelector('[data-on-click="startbtn"]').hidden = true;
+        app.element.firstElementChild.hidden = false;
+        app.emit("startbtn");
       };
-      instance.events.exit = async () => {
-        await instance.start();
-        instance.emit("exit");
+      app.events.exit = async () => {
+        await app.start();
+        app.emit("exit");
       };
   }
 }
 
-export function prevButton({ instance, type }) {
+export function noFinishButton({ app, type }) {
+  if (type !== "render") return;
+  app.element.querySelector('[data-on-click="finish"]').remove();
+}
+
+export function skippable({ app, type }) {
+  if (type !== "render") return;
+
+  if (app.current < app.state.questions.length - 1)
+    app.element.querySelector('[data-on-click="next"]').disabled = false;
+
+  const finishBtn = app.element.querySelector('[data-on-click="finish"]');
+  if (finishBtn && app.current === app.state.questions.length - 1)
+    finishBtn.disabled = false;
+}
+
+export function anytimeFinish({ app, type }) {
+  if (type !== "render") return;
+  const finishBtn = app.element.querySelector('[data-on-click="finish"]');
+  if (finishBtn) finishBtn.disabled = false;
+}
+
+export function prevButton({ app, type }) {
   switch (type) {
     case "render":
-      const prev_btn = instance.ui
-        .html`<button data-on-click="prev" ${instance.current === 0 && "disabled"}>${instance.labels.prev || "Previous"}</button>`;
-      instance.ui.bind(prev_btn, instance);
-      instance.element.querySelector("nav").prepend(prev_btn);
+      const prev_btn = app.ui
+        .html`<button data-on-click="prev" ${app.current === 0 && "disabled"}>${app.labels.prev || "Previous"}</button>`;
+      app.ui.bind(prev_btn, app);
+      app.element.querySelector("nav").prepend(prev_btn);
       break;
     case "ready":
-      instance.events.prev = () => {
-        if (instance.current === 0) return;
-        if (!instance.feedback) instance.evaluate();
-        instance.current--;
-        instance.renderQuestion(
-          instance.feedback && instance.state.items[instance.current].input,
-        );
-        instance.emit("prev");
+      app.events.prev = () => {
+        if (app.current === 0) return;
+        if (!app.feedback) app.evaluate();
+        app.current--;
+        app.renderQuestion();
+        app.emit("prev");
       };
   }
 }
 
-export function anytimeFinish({ instance, type }) {
+export function triState({ app, type }) {
   if (type !== "render") return;
-  const finishBtn = instance.element.querySelector('[data-on-click="finish"]');
-  if (!finishBtn) return;
-  finishBtn.disabled = false;
+  const question = app.state.questions[app.current];
+  if (question.type !== "checkbox") return;
+  if (!question.answers[0].tristate)
+    question.answers.forEach((answer) => (answer.tristate = 1));
+  app.element
+    .querySelectorAll('.input[type="checkbox"]')
+    .forEach((checkbox, i) => {
+      const answer = question.answers[i];
+      if (answer.tristate === 1) checkbox.indeterminate = true;
+      checkbox.addEventListener("click", () => {
+        switch (answer.tristate) {
+          case 1:
+            checkbox.checked = true;
+            checkbox.indeterminate = false;
+            answer.tristate = 2;
+            break;
+          case 2:
+            checkbox.checked = false;
+            checkbox.indeterminate = false;
+            answer.tristate = 3;
+            break;
+          case 3:
+            checkbox.checked = false;
+            checkbox.indeterminate = true;
+            answer.tristate = 1;
+            break;
+        }
+      });
+    });
 }
 
-export function noFinishButton({ instance, type }) {
-  if (type !== "render") return;
-  instance.element.querySelector('[data-on-click="finish"]').remove();
-}
-
-export function triState({ instance, type }) {
-  const question = instance.questions[instance.current];
-  const item = instance.state.items[instance.current];
-  switch (type) {
-    case "evaluate":
-      if (question.type !== "checkbox") return;
-      item.input = item.state;
-      delete item.state;
-      break;
-    case "render":
-      if (instance.questions[instance.current].type !== "checkbox") return;
-      const state =
-        item.input || item.state || Array(question.answers.length).fill(2);
-      if (!item.input) item.state = state;
-      instance.element
-        .querySelectorAll('.input[type="checkbox"]')
-        .forEach((checkbox, i) => {
-          if (state[i] === 2) checkbox.indeterminate = true;
-          checkbox.addEventListener("click", () => {
-            switch (state[i]) {
-              case 2:
-                checkbox.checked = true;
-                checkbox.indeterminate = false;
-                state[i] = 1;
-                break;
-              case 1:
-                checkbox.checked = false;
-                checkbox.indeterminate = false;
-                state[i] = 0;
-                break;
-              case 0:
-                checkbox.checked = false;
-                checkbox.indeterminate = true;
-                state[i] = 2;
-                break;
-            }
-          });
-        });
-  }
-}
-
-export async function store({ instance, type }) {
-  if (!instance.ccm.helper.isStore(instance.store)) return;
-
-  switch (type) {
-    case "start":
-      instance.state.key = instance.key;
-      break;
-    case "submit":
-      await save(instance);
-      break;
-    case "prev":
-      if (!instance.feedback) await save(instance, 1);
-      break;
-    case "next":
-      if (!instance.feedback) await save(instance, -1);
-      break;
-    case "finish":
-    case "exit":
-      if (!instance.feedback) await save(instance);
-  }
+export async function store({ app, type }) {
+  if (!app.ccm.helper.isStore(app.store)) return;
+  if (type === "start") app.state.key = app.key;
+  if (type === "evaluate") await app.store.set(app.state);
 }
 
 export function analytics(event) {
-  if (event.type === "init") console.log(event.instance);
-  console.log("Event:", event.type, event.instance.state);
+  if (event.type === "init") console.log(event.app);
+  console.log("Event:", event.type, event.app.state);
   // with datastore
 }
 
-export async function restart({ instance, type }) {
+export async function restart({ app, type }) {
   if (type !== "finish") return;
-  if (instance.feedback && (await loadState(instance)))
-    await instance.store.del(instance.key);
-  await instance.start();
+  if (app.ccm.helper.isStore(app.store)) await app.store.del(app.key);
+  await app.start();
 }
 
 // summary
@@ -207,44 +173,6 @@ function escape(str) {
   );
 }
 
-async function save(instance, diff = 0) {
-  const current = instance.current + diff;
-  const question = instance.questions[current];
-
-  let state = instance.ccm.helper.clone(instance.state);
-  const item = state.items[current];
-
-  if (question.answers[0].originalNr) {
-    if (question.type === "radio") {
-      item.input = question.answers[item.input - 1].originalNr;
-      item.solution = question.answers[item.solution - 1].originalNr;
-    } else {
-      const input = [];
-      const solution = [];
-      item.input.forEach(
-        (value, i) => (input[question.answers[i].originalNr - 1] = value),
-      );
-      item.solution.forEach(
-        (value, i) => (solution[question.answers[i].originalNr - 1] = value),
-      );
-      item.input = input;
-      item.solution = solution;
-    }
-  }
-
-  if (question.originalNr) {
-    state.items = instance.state.items
-      .map((item, i) => ({
-        item,
-        index: instance.questions[i].originalNr - 1,
-      }))
-      .sort((a, b) => a.index - b.index)
-      .map((entry) => entry.item);
-  }
-
-  await instance.store.set(state);
-}
-
 function shuffle(array) {
   // Fisher–Yates algorithm
   for (let i = array.length - 1; i > 0; i--) {
@@ -252,12 +180,4 @@ function shuffle(array) {
     [array[i], array[j]] = [array[j], array[i]];
   }
   return array;
-}
-
-async function loadState(instance) {
-  if (
-    instance.ccm.helper.isStore(instance.store) &&
-    instance.ccm.helper.isKey(instance.key)
-  )
-    return instance.store.get(instance.key);
 }
