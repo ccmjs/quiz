@@ -10,6 +10,7 @@ export async function escapeHTML({ app, type }) {
 
 export async function restore({ app, type }) {
   if (type !== "before-start") return;
+  if (app.state) return;
   if (!app.ccm.helper.isStore(app.store) || !app.ccm.helper.isKey(app.key))
     return;
   const state = await app.store.get(app.key);
