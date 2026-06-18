@@ -5,10 +5,10 @@ export const component = {
     // UI utilities (templating + event binding)
     ui: ["ccm.load", "././libs/ccm-ui/ccm-ui.mjs"],
 
-    // HTML templates
-    html: ["ccm.load", "././resources/templates.mjs"],
+    // Component views (HTML templates)
+    views: ["ccm.load", "././resources/views.mjs"],
 
-    // Component styles
+    // Component styles (CSS)
     css: ["ccm.load", "././resources/styles.css"],
 
     /**
@@ -115,7 +115,7 @@ export const component = {
      * Renders the current question.
      */
     this.renderQuestion = async () => {
-      this.ui.render(this.html.question(this), this.element, this);
+      this.ui.render(this.views.question(this), this.element, this);
       await this.emit("render");
     };
 
