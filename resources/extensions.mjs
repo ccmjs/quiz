@@ -29,6 +29,33 @@ export async function randomAnswers({ app, type }) {
   app.renderQuestion();
 }
 
+export function paging({ app, type }) {
+  if (type !== "render") return;
+
+  const paging = app.ui.html`
+    <nav class="paging">
+      ${app.state.questions.map((question, i) => {
+        const classes = [];
+        if (i === app.current) classes.push("current");
+        if (question.evaluated) {
+          classes.push("evaluated");
+          if (
+            app.feedback &&
+            question.answers.every(
+              (answer) => answer.selected === answer.correct,
+            )
+          )
+            classes.push("correct");
+        }
+        return app.ui
+          .html`<span class="page ${classes.join(" ")}">${i + 1}</span>`;
+      })}
+    </nav>
+  `;
+
+  app.element.querySelector("main").appendChild(paging);
+}
+
 export async function startButton({ app, type }) {
   switch (type) {
     case "start":
@@ -44,7 +71,7 @@ export async function startButton({ app, type }) {
         ${app.labels.exit || "Exit"}
       </button>`;
       app.ui.bind(exitBtn, app);
-      app.element.querySelector("nav").appendChild(exitBtn);
+      app.element.querySelector(".buttons").appendChild(exitBtn);
       break;
     case "ready":
       app.events.startbtn = () => {
@@ -67,12 +94,25 @@ export function noFinishButton({ app, type }) {
 export function skippable({ app, type }) {
   if (type !== "render") return;
 
+  // Enable "Next"
   if (app.current < app.state.questions.length - 1)
     app.element.querySelector('[data-on-click="next"]').disabled = false;
 
+  // Enable "Finish" on last question
   const finishBtn = app.element.querySelector('[data-on-click="finish"]');
   if (finishBtn && app.current === app.state.questions.length - 1)
     finishBtn.disabled = false;
+
+  // Enable forward navigation in paging (if present)
+  app.element.querySelectorAll(".paging .page").forEach((page, i) => {
+    if (i <= app.current) return;
+    page.classList.add("clickable");
+    page.addEventListener("click", async () => {
+      app.current = i;
+      await app.renderQuestion();
+      await app.emit("jump");
+    });
+  });
 }
 
 export function anytimeFinish({ app, type }) {
@@ -88,6 +128,18 @@ export function prevButton({ app, type }) {
         .html`<button data-on-click="prev" ${app.current === 0 && "disabled"}>${app.labels.prev || "Previous"}</button>`;
       app.ui.bind(prev_btn, app);
       app.element.querySelector("nav").prepend(prev_btn);
+
+      // Enable backward navigation in paging (if present)
+      app.element.querySelectorAll(".paging .page").forEach((page, i) => {
+        if (i >= app.current) return;
+        page.classList.add("clickable");
+        page.addEventListener("click", async () => {
+          app.current = i;
+          await app.renderQuestion();
+          await app.emit("jump");
+        });
+      });
+
       break;
     case "ready":
       app.events.prev = () => {
@@ -156,7 +208,6 @@ export async function restart({ app, type }) {
 // save user-specific
 // lang
 // sounds
-// paging [1|2|...|n]
 // routing
 // points
 

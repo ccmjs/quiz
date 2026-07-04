@@ -30,7 +30,7 @@ export function question(app) {
         )}
       </ul>
 
-      <nav>
+      <nav class="buttons">
         <button data-on-click="submit"
                 ${showFeedback && "disabled"}
                 ${!app.feedback && "hidden"}>

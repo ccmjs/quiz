@@ -18,3 +18,31 @@ ul {
 .comment input:not(:checked) + span + div {
   display: none;
 }
+
+.paging {
+  display: inline-flex;
+  border: 1px solid #ccc;
+  border-radius: .25rem;
+  margin: .5rem 0;
+
+  & .page {
+    border: 1px solid #ccc;
+    padding: .5rem;
+  }
+
+  & .page.current {
+    font-weight: bold;
+  }
+
+  & .page.evaluated {
+    background: rgba(255, 0, 0, 0.5);
+  }
+
+  & .page.correct {
+    background: rgba(0, 255, 0, 0.5);
+  }
+
+  & .page.clickable {
+    cursor: pointer;
+  }
+}
