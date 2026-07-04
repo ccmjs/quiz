@@ -78,7 +78,8 @@ export const component = {
     /** Starts or restarts the quiz */
     this.start = async () => {
       await this.emit("before-start");
-      if (!this.state) this.state = { questions: this.questions };
+      if (!this.state)
+        this.state = { questions: structuredClone(this.questions) };
       this.current = 0;
       await this.renderQuestion();
       await this.emit("start");
