@@ -29,6 +29,23 @@ export async function randomAnswers({ app, type }) {
   app.renderQuestion();
 }
 
+export function progressBar({ app, type }) {
+  if (type !== "render") return;
+  const total = app.state.questions.length;
+  const evaluated = app.state.questions.filter(
+    (question) => question.evaluated,
+  ).length;
+  const progress = app.ui.html`
+    <div class="progress">
+      <progress
+        value="${evaluated}"
+        max="${total}">
+      </progress>
+    <div>
+  `;
+  app.element.querySelector("main").appendChild(progress);
+}
+
 export function paging({ app, type }) {
   if (type !== "render") return;
 
@@ -232,7 +249,6 @@ export async function restart({ app, type }) {
 }
 
 // summary
-// progress bar (green/red/gray)
 // save user-specific
 // lang
 // routing
