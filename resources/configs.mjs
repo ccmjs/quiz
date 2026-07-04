@@ -306,7 +306,7 @@ export const demo = {
       ],
     },
   ],
-  feedback: true,
+  feedback: false,
   extensions: [
     ["ccm.load", "././resources/extensions.mjs#escapeHTML"],
     ["ccm.load", "././resources/extensions.mjs#restore"],
@@ -316,7 +316,7 @@ export const demo = {
     ["ccm.load", "././resources/extensions.mjs#progressBar"],
     ["ccm.load", "././resources/extensions.mjs#paging"],
     ["ccm.load", "././resources/extensions.mjs#startButton"],
-    ["ccm.load", "././resources/extensions.mjs#noFinishButton"],
+    // ["ccm.load", "././resources/extensions.mjs#noFinishButton"],
     ["ccm.load", "././resources/extensions.mjs#skippable"],
     ["ccm.load", "././resources/extensions.mjs#anytimeFinish"],
     ["ccm.load", "././resources/extensions.mjs#prevButton"],

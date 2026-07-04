@@ -30,7 +30,7 @@ export async function randomAnswers({ app, type }) {
 }
 
 export function summary({ app, type }) {
-  if (type !== "start") return;
+  if (type !== "start" || !app.feedback) return;
 
   const finish = app.events.finish;
   app.events.finish = async () => {
@@ -104,13 +104,14 @@ export function paging({ app, type }) {
         if (i === app.current) classes.push("current");
         if (question.evaluated) {
           classes.push("evaluated");
-          if (
-            app.feedback &&
-            question.answers.every(
-              (answer) => answer.selected === answer.correct,
-            )
-          )
-            classes.push("correct");
+          app.feedback &&
+            classes.push(
+              question.answers.every(
+                (answer) => answer.selected === answer.correct,
+              )
+                ? "correct"
+                : "wrong",
+            );
         }
         return app.ui
           .html`<span class="page ${classes.join(" ")}">${i + 1}</span>`;

@@ -35,6 +35,10 @@ ul {
   }
 
   & .page.evaluated {
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  & .page.wrong {
     background: rgba(255, 0, 0, 0.5);
   }
 
