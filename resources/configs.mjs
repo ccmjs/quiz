@@ -312,6 +312,7 @@ export const demo = {
     ["ccm.load", "././resources/extensions.mjs#restore"],
     ["ccm.load", "././resources/extensions.mjs#shuffleQuestions"],
     ["ccm.load", "././resources/extensions.mjs#randomAnswers"],
+    ["ccm.load", "././resources/extensions.mjs#summary"],
     ["ccm.load", "././resources/extensions.mjs#progressBar"],
     ["ccm.load", "././resources/extensions.mjs#paging"],
     ["ccm.load", "././resources/extensions.mjs#startButton"],

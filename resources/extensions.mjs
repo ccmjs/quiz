@@ -29,6 +29,54 @@ export async function randomAnswers({ app, type }) {
   app.renderQuestion();
 }
 
+export function summary({ app, type }) {
+  if (type !== "start") return;
+
+  const finish = app.events.finish;
+  app.events.finish = async () => {
+    const total = app.state.questions.length;
+    let correct = 0;
+    let max = 0;
+    let points = 0;
+
+    app.state.questions.forEach((question) => {
+      question.answers.every((answer) => answer.selected === answer.correct) &&
+        correct++;
+      max += question.type === "radio" ? 1 : question.answers.length;
+      points += question.points || 0;
+    });
+
+    app.ui.render(
+      app.ui.html`
+        <main>
+          <h1>Summary</h1>
+          <p>
+            ${
+              points
+                ? app.ui.html`
+                  <progress value="${points}" max="${max}"></progress>
+                  ${points} / ${max} points
+                `
+                : app.ui.html`
+                  <progress value="${correct}" max="${total}"></progress>
+                  ${correct} / ${total} correct
+                `
+            }
+          </p>
+          <nav>
+            <button data-on-click="finish">${app.labels.finish}</button>
+          </nav>
+        </main>
+      `,
+      app.element,
+      app,
+    );
+
+    // restore original finish handler
+    app.events.finish = finish;
+  };
+}
+
 export function progressBar({ app, type }) {
   if (type !== "render") return;
   const total = app.state.questions.length;
@@ -144,7 +192,7 @@ export function prevButton({ app, type }) {
       const prev_btn = app.ui
         .html`<button data-on-click="prev" ${app.current === 0 && "disabled"}>${app.labels.prev || "Previous"}</button>`;
       app.ui.bind(prev_btn, app);
-      app.element.querySelector("nav").prepend(prev_btn);
+      app.element.querySelector(".buttons").prepend(prev_btn);
 
       // Enable backward navigation in paging (if present)
       app.element.querySelectorAll(".paging .page").forEach((page, i) => {
@@ -224,10 +272,6 @@ export function decisionScore({ app, type }) {
       );
       break;
   }
-  app.state.points = app.state.questions.reduce(
-    (sum, question) => sum + (question.points || 0),
-    0,
-  );
 }
 
 export async function store({ app, type }) {
@@ -245,14 +289,9 @@ export function analytics(event) {
 export async function restart({ app, type }) {
   if (type !== "finish") return;
   if (app.ccm.helper.isStore(app.store)) await app.store.del(app.key);
+  delete app.state;
   await app.start();
 }
-
-// summary
-// save user-specific
-// lang
-// routing
-// sounds
 
 function escape(str) {
   return String(str).replace(
