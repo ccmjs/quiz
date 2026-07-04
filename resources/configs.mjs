@@ -306,7 +306,7 @@ export const demo = {
       ],
     },
   ],
-  feedback: false,
+  feedback: true,
   extensions: [
     ["ccm.load", "././resources/extensions.mjs#escapeHTML"],
     ["ccm.load", "././resources/extensions.mjs#restore"],

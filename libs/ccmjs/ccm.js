@@ -657,6 +657,7 @@
       (instance.root || instance.host).appendChild(
         (instance.element = document.createElement("div")),
       );
+      instance.element.classList.add("root");
 
       // Temporarily move the host element to <head> for resolving dependencies.
       document.head.appendChild(instance.host);

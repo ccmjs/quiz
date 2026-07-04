@@ -2,7 +2,7 @@ export function question(app) {
   const question = app.state.questions[app.current];
   const showFeedback = question.evaluated && app.feedback;
   return app.ui.html`
-    <main>
+    <main class="${question.evaluated && "evaluated"}">
       <h1>${question.text}</h1>
       <p>${question.description}</p>
       
@@ -21,7 +21,7 @@ export function question(app) {
               <span class="comment" ${(!showFeedback || !answer.comment) && "hidden"}>
                 <label>
                   <input type="checkbox" hidden>
-                  <span><small>ℹ️</small></span>
+                  <span>ℹ️</span>
                   <div>${answer.comment}</div>
                 </label>
               </span>

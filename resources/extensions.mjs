@@ -55,11 +55,11 @@ export function summary({ app, type }) {
               points
                 ? app.ui.html`
                   <progress value="${points}" max="${max}"></progress>
-                  ${points} / ${max} points
+                  ${points} / ${max} ${app.labels.points || "points"}
                 `
                 : app.ui.html`
                   <progress value="${correct}" max="${total}"></progress>
-                  ${correct} / ${total} correct
+                  ${correct} / ${total} ${app.labels.corrects || "correct"}
                 `
             }
           </p>
@@ -71,6 +71,20 @@ export function summary({ app, type }) {
       app.element,
       app,
     );
+
+    // animate progress bar
+    const progress = app.element.querySelector("progress");
+    const target = progress.value;
+    progress.value = 0;
+    const duration = app.duration || 800;
+    const start = performance.now();
+    function animate(now) {
+      const t = Math.min((now - start) / duration, 1);
+      // ease-out
+      progress.value = target * (1 - Math.pow(1 - t, 3));
+      if (t < 1) requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
 
     // restore original finish handler
     app.events.finish = finish;
@@ -232,12 +246,12 @@ export function triState({ app, type }) {
       checkbox.addEventListener("click", () => {
         switch (answer.tristate) {
           case 1:
-            checkbox.checked = true;
+            checkbox.checked = false;
             checkbox.indeterminate = false;
             answer.tristate = 2;
             break;
           case 2:
-            checkbox.checked = false;
+            checkbox.checked = true;
             checkbox.indeterminate = false;
             answer.tristate = 3;
             break;
