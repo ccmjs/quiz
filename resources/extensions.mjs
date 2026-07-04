@@ -185,6 +185,34 @@ export function triState({ app, type }) {
     });
 }
 
+export function decisionScore({ app, type }) {
+  if (type !== "evaluate") return;
+  const question = app.state.questions[app.current];
+  switch (question.type) {
+    case "radio":
+      question.points = question.answers.some(
+        (answer) => answer.selected && answer.correct,
+      )
+        ? 1
+        : 0;
+      break;
+    case "checkbox":
+      question.points = Math.max(
+        0,
+        question.answers.reduce((points, answer) => {
+          if (answer.tristate === 1) return points;
+          const correct = !!answer.selected === !!answer.correct;
+          return points + (correct ? 1 : -1);
+        }, 0),
+      );
+      break;
+  }
+  app.state.points = app.state.questions.reduce(
+    (sum, question) => sum + (question.points || 0),
+    0,
+  );
+}
+
 export async function store({ app, type }) {
   if (!app.ccm.helper.isStore(app.store)) return;
   if (type === "start") app.state.key = app.key;
@@ -207,9 +235,8 @@ export async function restart({ app, type }) {
 // progress bar (green/red/gray)
 // save user-specific
 // lang
-// sounds
 // routing
-// points
+// sounds
 
 function escape(str) {
   return String(str).replace(

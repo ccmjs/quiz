@@ -57,6 +57,7 @@ export const component = {
       // ["ccm.load", "././resources/extensions.mjs#anytimeFinish"],
       // ["ccm.load", "././resources/extensions.mjs#prevButton"],
       // ["ccm.load", "././resources/extensions.mjs#triState"],
+      // ["ccm.load", "././resources/extensions.mjs#decisionScore"],
       // ["ccm.load", "././resources/extensions.mjs#store"],
       ["ccm.load", "././resources/extensions.mjs#analytics"],
       ["ccm.load", "././resources/extensions.mjs#restart"],
