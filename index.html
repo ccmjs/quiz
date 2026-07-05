@@ -4,12 +4,7 @@
   <title>ccmjs Quiz Demo</title>
   <script src="././libs/ccmjs/ccm.js"></script>
   <script type="module">
-    ccm.start("././ccm.quiz.mjs", {}, document.getElementById("quiz1"));
-    ccm.start("././ccm.quiz.mjs", ["ccm.load", "././resources/configs.mjs#demo"], document.getElementById("quiz2"));
+    ccm.start("././ccm.quiz.mjs", ["ccm.load", "././resources/configs.mjs#demo"], document.body);
   </script>
 </head>
-<body>
-  <div id="quiz1"></div>
-  <hr>
-  <div id="quiz2"></div>
-</body>
+<body></body>
