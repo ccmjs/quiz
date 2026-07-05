@@ -30,9 +30,11 @@ export async function randomAnswers({ app, type }) {
 }
 
 export function summary({ app, type }) {
-  if (type !== "start" || !app.feedback) return;
+  if (!app.feedback) return;
+  if (type === "ready") app.events.finish2 = app.events.finish;
+  if (type !== "start") return;
+  if (app.events.finish !== app.events.finish2) return;
 
-  const finish = app.events.finish;
   app.events.finish = async () => {
     const total = app.state.questions.length;
     let correct = 0;
@@ -87,7 +89,7 @@ export function summary({ app, type }) {
     requestAnimationFrame(animate);
 
     // restore original finish handler
-    app.events.finish = finish;
+    app.events.finish = app.events.finish2;
   };
 }
 
