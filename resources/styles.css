@@ -115,7 +115,7 @@ input[type="checkbox"] {
 
 .comment div {
   position: absolute;
-  top: calc(100% + .5rem);
+  top: calc(100% - 1rem);
   right: 0;
   width: 18rem;
   max-width: min(22rem, 80vw);
