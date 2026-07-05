@@ -2,6 +2,12 @@ export const component = {
   name: "quiz",
   ccm: "././libs/ccmjs/ccm.js",
   config: {
+    // TODO: save user-specific
+    // TODO: lang
+    // TODO: routing
+    // TODO: dark mode
+    // TODO: sounds
+
     // UI utilities (templating + event binding)
     ui: ["ccm.load", "././libs/ccm-ui/ccm-ui.mjs"],
 
@@ -64,12 +70,6 @@ export const component = {
       ["ccm.load", "././resources/extensions.mjs#analytics"],
       ["ccm.load", "././resources/extensions.mjs#restart"],
     ],
-
-    // save user-specific
-    // lang
-    // routing
-    // dark mode
-    // sounds
   },
   Instance: function () {
     /** Lifecycle hook */
