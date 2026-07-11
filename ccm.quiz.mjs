@@ -2,10 +2,9 @@ export const component = {
   name: "quiz",
   ccm: "././libs/ccmjs/ccm.js",
   config: {
-    // TODO: save user-specific
+    // TODO: user
     // TODO: lang
     // TODO: routing
-    // TODO: dark mode
     // TODO: sounds
 
     // UI utilities (templating + event binding)

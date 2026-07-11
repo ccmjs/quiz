@@ -7,6 +7,7 @@
   --error: #d9534f;
   --error-light: #fdeeee;
   --border: #d8d8d8;
+  --background: white;
   --surface: #f8f9fa;
   --text: #222;
   --radius: .75rem;
@@ -35,6 +36,24 @@ main {
   padding: 1.5rem;
 }
 
+/* ---------- Dark Mode ---------- */
+
+@media (prefers-color-scheme: dark) {
+  .root {
+    --background: black;
+    --surface: #2a2d33;
+    --border: #454a52;
+    --text: #f1f5f9;
+    --primary: #32b7f0;
+    --primary-light: #163d52;
+    --primary-hover: #58c6f4;
+    --success: #53d769;
+    --success-light: #1d3a23;
+    --error: #ff6b6b;
+    --error-light: #472424;
+  }
+}
+
 /* ---------- Typography ---------- */
 
 h1 {
@@ -60,7 +79,7 @@ li {
   display: flex;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background-color: white;
+  background-color: var(--background);
   transition: .2s;
 }
 
