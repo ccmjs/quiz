@@ -133,9 +133,10 @@ export const component = {
     this.evaluate = async () => {
       const question = this.state.questions[this.current];
       const inputs = this.element.querySelectorAll(".input");
-      inputs.forEach(
-        (input, i) => input.checked && (question.answers[i].selected = true),
-      );
+      inputs.forEach((input, i) => {
+        if (input.checked) question.answers[i].selected = true;
+        else delete question.answers[i].selected;
+      });
       question.evaluated = true;
       await this.emit("evaluate");
     };
