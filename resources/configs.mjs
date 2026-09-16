@@ -1,5 +1,4 @@
 export const demo = {
-  key: "demo",
   questions: [
     {
       text: "Was ist HTML?",

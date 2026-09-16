@@ -1,6 +1,6 @@
 export const component = {
   name: "quiz",
-  ccm: "././libs/ccmjs/ccm.js",
+  ccm: "././libs/framework/ccm.js",
   config: {
     // TODO: user
     // TODO: lang
