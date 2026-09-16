@@ -171,7 +171,7 @@ export const component = {
       const extensions = [].concat(this.extensions || []);
 
       for (const extension of extensions)
-        extension && (await extension({ app: this, type }));
+        if (extension) await extension({ app: this, type });
     };
   },
 };
