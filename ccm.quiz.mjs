@@ -1,3 +1,10 @@
+/**
+ * Configurable quiz with feedback and extensions.
+ *
+ * @author André Kless <andre.kless@web.de>
+ * @copyright 2026 André Kless
+ * @license MIT
+ */
 export const component = {
   name: "quiz",
   ccm: "././libs/framework/ccm.js",
