@@ -9,7 +9,6 @@ export const component = {
   name: "quiz",
   ccm: "././libs/framework/ccm.js",
   config: {
-    // TODO: user
     // TODO: lang
     // TODO: routing
     // TODO: sounds
@@ -56,6 +55,13 @@ export const component = {
       finish: "Finish",
     },
 
+    /**
+     * Optional authentication UI, rendered at the top right; omitted when no user is configured.
+     * Required by the store extension for user-specific or protected results.
+     * Set autoLogin on the user instance to require authentication before the quiz starts.
+     */
+    // user: ["ccm.instance", "https://ccmjs.github.io/user/ccm.user.mjs"],
+
     // Extension points
     extensions: [
       // ["ccm.load", "././resources/extensions.mjs#escapeHTML"],
@@ -65,7 +71,6 @@ export const component = {
       // ["ccm.load", "././resources/extensions.mjs#summary"],
       // ["ccm.load", "././resources/extensions.mjs#progressBar"],
       // ["ccm.load", "././resources/extensions.mjs#paging"],
-      // ["ccm.load", "././resources/extensions.mjs#startButton"],
       // ["ccm.load", "././resources/extensions.mjs#noFinishButton"],
       // ["ccm.load", "././resources/extensions.mjs#skippable"],
       // ["ccm.load", "././resources/extensions.mjs#anytimeFinish"],
@@ -91,6 +96,13 @@ export const component = {
     /** Starts or restarts the quiz */
     this.start = async () => {
       await this.emit("before-start");
+      // Keep authentication outside the changing quiz content, including question changes and the summary.
+      if (!this.content) {
+        this.ui.render(this.views.main(this), this.element, this);
+        this.content = this.element.querySelector(".quiz-content");
+      }
+      // Await user.start on retries too; the user component controls its one-time autoLogin.
+      if (this.user) await this.user.start();
       if (!this.state)
         this.state = { questions: structuredClone(this.questions) };
       this.current = 0;
@@ -132,7 +144,7 @@ export const component = {
      * Renders the current question.
      */
     this.renderQuestion = async () => {
-      this.ui.render(this.views.question(this), this.element, this);
+      this.ui.render(this.views.question(this), this.content, this);
       await this.emit("render");
     };
 
