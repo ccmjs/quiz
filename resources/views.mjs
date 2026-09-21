@@ -1,8 +1,16 @@
+/** Stable quiz shell; question changes leave the embedded user component connected. */
+export function main(app) {
+  return app.ui.html`
+    ${app.user && app.ui.html`<header class="user-area">${app.user.host}</header>`}
+    <main class="quiz-content"></section>
+  `;
+}
+
 export function question(app) {
   const question = app.state.questions[app.current];
   const showFeedback = question.evaluated && app.feedback;
   return app.ui.html`
-    <main class="${question.evaluated && "evaluated"}">
+    <section class="question ${question.evaluated && "evaluated"}">
       <h1>${question.text}</h1>
       <p>${question.description}</p>
       
@@ -45,6 +53,6 @@ export function question(app) {
           ${app.labels.finish}
         </button>
       </nav>
-    </main>
+    </section>
   `;
 }
