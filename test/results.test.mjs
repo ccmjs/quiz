@@ -23,7 +23,7 @@ function create(options = {}) {
       mapObject: window.ccm.helper.mapObject,
     } },
     results: {
-      key: "what_is_html", userSpecific: true, login: "before-start",
+      key: "what_is_html", userSpecific: true,
       _: { access: { get: "owner" } },
       store: {
         get: async key => structuredClone(saved.get(JSON.stringify(key)) ?? null),
@@ -43,10 +43,10 @@ function create(options = {}) {
 test("replace uses app/realm/user, saves on finish and preserves changed permissions", async () => {
   const { app, saved } = create();
   await app.start();
-  assert.deepEqual(app.state.key, ["what_is_html", "we_test", "alice"]);
+  assert.equal(app.state.key, "what_is_html");
   assert.equal(app.state.app, "what_is_html");
-  assert.equal(app.state.realm, "we_test");
-  assert.equal(app.state.user, "alice");
+  assert.equal(app.state.realm, undefined);
+  assert.equal(app.state.user, undefined);
   await store({ app, type: "evaluate" });
   assert.equal(saved.size, 0);
   await store({ app, type: "finish" });
@@ -62,10 +62,10 @@ test("replace uses app/realm/user, saves on finish and preserves changed permiss
 test("append creates one key per attempt and retries an uncertain write without duplicates", async () => {
   const { app, saved } = create({ mode: "append" });
   await app.start();
-  const key = [...app.state.key];
   const set = app.results.store.set;
   app.results.store.set = async data => { await set(data); throw new Error("response lost"); };
   await assert.rejects(store({ app, type: "finish" }), /response lost/);
+  const key = [...app.state.key];
   app.results.store.set = set;
   await store({ app, type: "finish" });
   assert.deepEqual(app.state.key, key);
@@ -77,7 +77,7 @@ test("append creates one key per attempt and retries an uncertain write without 
 });
 
 test("key fallback and anonymous results work without a user component", async () => {
-  const { app } = create({ key: undefined, userSpecific: false, _: undefined, login: "on-demand" });
+  const { app } = create({ key: undefined, userSpecific: false, _: undefined });
   delete app.user;
   await app.start();
   assert.equal(app.state.key, "fallback");
@@ -93,22 +93,24 @@ test("key fallback and anonymous results work without a user component", async (
 test("changed accounts cannot take over ongoing attempts", async () => {
   const { app, identity, saved } = create();
   await app.start();
+  await store({ app, type: "finish" });
   identity.key = "bob";
   await assert.rejects(store({ app, type: "finish" }), /account that started/);
-  assert.equal(saved.size, 0);
+  assert.equal(saved.size, 1);
 });
 
 test("existing public records remain public rather than acquiring initial permissions", async () => {
   const { app, saved } = create();
   await app.start();
-  saved.set(JSON.stringify(app.state.key), { key: app.state.key });
+  const savedKey = ["what_is_html", "we_test", "alice"];
+  saved.set(JSON.stringify(savedKey), { key: savedKey });
   await store({ app, type: "finish" });
   assert.equal(Object.hasOwn(saved.values().next().value, "_"), false);
 });
 
 
 test("on-demand is the default and binds the user only when saving", async () => {
-  const { app, saved } = create({ login: undefined, mode: "append" });
+  const { app, saved } = create({ mode: "append" });
   let calls = 0;
   app.user.login = async () => { calls++; return { realm: "we_test", key: "alice" }; };
   await app.start();
@@ -124,7 +126,7 @@ test("on-demand is the default and binds the user only when saving", async () =>
 });
 
 test("cancelled on-demand login preserves the provisional key for a later submission", async () => {
-  const { app, saved } = create({ login: "on-demand", mode: "append" });
+  const { app, saved } = create({ mode: "append" });
   await app.start();
   const provisional = [...app.state.key];
   app.user.login = async () => { throw new Error("cancelled"); };
@@ -134,13 +136,6 @@ test("cancelled on-demand login preserves the provisional key for a later submis
   app.user.login = async () => ({ realm: "we_test", key: "alice" });
   await store({ app, type: "finish" });
   assert.equal(app.state.key.at(-1), provisional.at(-1));
-});
-
-test("before-start blocks the quiz if login fails", async () => {
-  const { app } = create({ login: "before-start" });
-  app.user.login = async () => { throw new Error("cancelled"); };
-  await assert.rejects(app.start(), /cancelled/);
-  assert.equal(app.state.key, undefined);
 });
 
 test("declarative mapping changes result shape while preserving submission metadata", async () => {
@@ -163,7 +158,8 @@ test("functional mapper gets a copy and cannot override metadata or saved permis
     return { score: 5, key: "forged", app: "other", user: "bob", realm: "other", _: {} };
   } });
   await app.start();
-  saved.set(JSON.stringify(app.state.key), { key: app.state.key, _: { access: { get: "all" } } });
+  const savedKey = ["what_is_html", "we_test", "alice"];
+  saved.set(JSON.stringify(savedKey), { key: savedKey, _: { access: { get: "all" } } });
   await store({ app, type: "finish" });
   const data = saved.values().next().value;
   assert.equal(app.state.questions.length, 0);
@@ -178,8 +174,8 @@ test("functional mapper gets a copy and cannot override metadata or saved permis
 test("mapping failures prevent writes and retain the attempt for retry", async () => {
   const { app, saved } = create({ mapper: () => null });
   await app.start();
-  const key = structuredClone(app.state.key);
   await assert.rejects(store({ app, type: "finish" }), /return an object/);
+  const key = structuredClone(app.state.key);
   app.results.mapper = () => { throw new Error("mapping failed"); };
   await assert.rejects(store({ app, type: "finish" }), /mapping failed/);
   assert.equal(saved.size, 0);

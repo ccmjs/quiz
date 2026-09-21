@@ -13,9 +13,9 @@ function create(config = {}) {
       { text: "Multiple choice", type: "checkbox", answers: [{ text: "C", correct: true }, { text: "D", correct: true }, { text: "E" }] },
     ],
     ccm: { helper: { isStore: value => !!value && typeof value.get === "function", isKey: value => typeof value === "string" && !!value } },
-    element: { querySelectorAll: () => inputs },
-    views: { question: app => app.state.questions[app.current] },
-    ui: { render: question => renders.push(structuredClone(question)) },
+    element: { querySelectorAll: () => inputs, querySelector: () => ({}) },
+    views: { main: () => null, question: app => app.state.questions[app.current] },
+    ui: { render: question => { if (question) renders.push(structuredClone(question)); } },
     ...config,
     extensions: [({ type }) => events.push(type), ...[].concat(config.extensions || [])],
   });
@@ -103,20 +103,22 @@ test("restore loads once before the first render", async () => {
 test("storage receives evaluated state, and write failures propagate", async () => {
   const writes = [];
   const backend = { get() {}, async set(value) { writes.push(structuredClone(value)); } };
-  const { app, answer } = create({ key: "attempt", store: backend, extensions: [store] });
+  const { app, answer } = create({ key: "attempt", results: { store: backend }, extensions: [store] });
   await app.start(); assert.equal(writes.length, 0);
   answer(true, false); await app.evaluate();
+  assert.equal(writes.length, 0);
+  await app.events.finish();
   assert.equal(writes[0].key, "attempt"); assert.equal(writes[0].questions[0].evaluated, true);
   const failure = new Error("offline"); backend.set = async () => { throw failure; };
-  await assert.rejects(app.evaluate(), error => error === failure);
+  await assert.rejects(app.events.finish(), error => error === failure);
 });
 
-test("restart deletes the saved attempt and creates fresh results", async () => {
+test("restart retains saved attempts and creates fresh result state", async () => {
   const deleted = [];
   const { app, answer } = create({ key: "attempt", store: { get() {}, async del(key) { deleted.push(key); } }, extensions: [restart] });
   await app.start(); answer(true, false); await app.evaluate();
   const old = app.state; await app.events.finish();
-  assert.deepEqual(deleted, ["attempt"]); assert.notEqual(app.state, old);
+  assert.deepEqual(deleted, []); assert.notEqual(app.state, old);
   assert.equal(app.state.questions[0].evaluated, undefined);
   assert.equal(app.state.questions[0].answers[0].selected, undefined);
 });
@@ -134,4 +136,47 @@ test("decision score ignores unanswered tri-state choices", async () => {
   const { app, answer } = create({ extensions: [decisionScore] }); await app.start(); await app.events.next();
   app.state.questions[1].answers.forEach(answer => { answer.tristate = 1; });
   answer(false, false, false); await app.evaluate(); assert.equal(app.state.questions[1].points, 0);
+});
+
+test("before-start runs before user UI and question rendering", async () => {
+  let started = 0;
+  let hooks = 0;
+  const targets = [];
+  const { app } = create({
+    user: { start: async () => { started++; } },
+    extensions: [({ type }) => { if (type === "before-start") assert.equal(started, hooks++); }],
+  });
+  app.ui.render = (view, target) => targets.push(target);
+  await app.start();
+  const content = app.content;
+  await app.renderQuestion();
+  await app.start();
+  assert.equal(started, 2);
+  assert.equal(targets[0], app.element);
+  assert.ok(targets.slice(1).every(target => target === content));
+});
+
+test("quiz retries user.start after cancelled autoLogin before rendering any question", async () => {
+  let calls = 0;
+  const { app, renders } = create({ user: { start: async () => {
+    if (++calls === 1) throw new Error("cancelled");
+  } } });
+  await assert.rejects(app.start(), /cancelled/);
+  assert.equal(app.state, undefined);
+  assert.equal(renders.length, 0);
+  await app.start();
+  assert.equal(calls, 2);
+  assert.equal(renders.length, 1);
+});
+
+test("a rejected before-start hook prevents rendering and user startup", async () => {
+  let started = false;
+  const { app, renders } = create({
+    user: { start: async () => { started = true; } },
+    extensions: [({ type }) => { if (type === "before-start") throw new Error("blocked"); }],
+  });
+  await assert.rejects(app.start(), /blocked/);
+  assert.equal(started, false);
+  assert.equal(app.content, undefined);
+  assert.equal(renders.length, 0);
 });
