@@ -36,6 +36,13 @@ main {
   padding: 1.5rem;
 }
 
+.question,
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
 a {
   color: var(--primary);
 }
@@ -92,7 +99,7 @@ li:hover {
   box-shadow: var(--shadow);
 }
 
-main:not(.evaluated) li:has(.input:checked) {
+.question:not(.evaluated) li:has(.input:checked) {
   border-color: var(--primary);
   background: var(--primary-light);
 }
@@ -245,20 +252,6 @@ progress {
   transform: scale(1.08);
 }
 
-/* ---------- Start Button ---------- */
-
-main[hidden] {
-  display: none !important;
-}
-
-main + button {
-  margin: 1rem;
-}
-
-.root:has(main[hidden]) {
-  background: inherit;
-}
-
 /* ---------- Focus ---------- */
 
 :focus-visible {
@@ -281,4 +274,11 @@ main + button {
   button {
     min-width: 8rem;
   }
+}
+
+/* Authentication stays visible while quiz content changes. */
+.user-area {
+  display: flex;
+  justify-content: flex-end;
+  padding: 1rem 1.5rem 0;
 }

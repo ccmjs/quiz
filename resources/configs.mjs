@@ -314,7 +314,6 @@ export const demo = {
     ["ccm.load", "././resources/extensions.mjs#summary"],
     ["ccm.load", "././resources/extensions.mjs#progressBar"],
     ["ccm.load", "././resources/extensions.mjs#paging"],
-    ["ccm.load", "././resources/extensions.mjs#startButton"],
     // ["ccm.load", "././resources/extensions.mjs#noFinishButton"],
     ["ccm.load", "././resources/extensions.mjs#skippable"],
     ["ccm.load", "././resources/extensions.mjs#anytimeFinish"],
@@ -325,5 +324,66 @@ export const demo = {
     ["ccm.load", "././resources/extensions.mjs#analytics"],
     ["ccm.load", "././resources/extensions.mjs#restart"],
   ],
-  store: ["ccm.store", { name: "quiz" }],
+  /** Authentication component shared by this quiz and its results datastore. */
+  user: [
+    "ccm.instance",
+    "https://ccmjs.github.io/user/ccm.user.mjs",
+    {
+      realm: "we_test",
+      registration: true,
+      autoLogin: true,
+      // Load the user's resources from its repository, not relative to the embedding quiz page.
+      ui: ["ccm.load", "https://ccmjs.github.io/user/libs/ccm-ui/ccm-ui.mjs"],
+      views: ["ccm.load", "https://ccmjs.github.io/user/resources/views.mjs"],
+      css: ["ccm.load", "https://ccmjs.github.io/user/resources/styles.css"],
+      providers: [
+        [
+          "ccm.instance",
+          "https://ccmjs.github.io/google_login/ccm.google_login.mjs",
+          {
+            // Resolve provider resources independently of the page embedding this demo.
+            url: "https://ccmjs.github.io/google_login/auth.html",
+            ui: [
+              "ccm.load",
+              "https://ccmjs.github.io/google_login/libs/ccm-ui/ccm-ui.mjs",
+            ],
+            views: [
+              "ccm.load",
+              "https://ccmjs.github.io/google_login/resources/views.mjs",
+            ],
+            css: [
+              "ccm.load",
+              "https://ccmjs.github.io/google_login/resources/styles.css",
+            ],
+          },
+        ],
+      ],
+    },
+  ],
+  /** Storage and initial permissions for completed quiz attempts. */
+  results: {
+    /** App identifier; falls back to `app.key`, then a generated key when omitted. */
+    key: "what_is_html",
+    /** The server stores results in its configured MongoDB database. */
+    store: [
+      "ccm.store",
+      { name: "quiz-results", url: "http://localhost:8080" },
+    ],
+    /** Require login and include realm and user key in each result. */
+    userSpecific: true,
+    /** replace: one result per app/user; append: a new result for each attempt. */
+    mode: "replace",
+    /** Optional state-to-result mapping: a function or source-path → target-path object. */
+    // mapper: ["ccm.load", "././resources/mappers.mjs#result"],
+    /** Creation defaults only; the server assigns the authenticated owner. */
+    _: {
+      access: { get: "owner", set: "owner", del: "owner" },
+      schedule: [
+        {
+          from: "2026-09-22T12:00:00+02:00",
+          access: { get: "all", set: "owner", del: "owner" },
+        },
+      ],
+    },
+  },
 };
