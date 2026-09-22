@@ -1,3 +1,19 @@
+/**
+ * Optional quiz extensions, loaded individually through ccm.load with a #function export.
+ * Each receives { app, type }; events are dispatched sequentially in config.extensions order.
+ * Lifecycle: ready -> before-start -> restore (when state is absent) -> create (if still absent)
+ * -> render -> start. User actions evaluate/render as needed, then emit submit/next/prev/jump/finish.
+ * store emits stored after writing the final result, before later finish extensions run.
+ * UI extensions rely on the selectors in resources/views.mjs. Use app.run for async user actions.
+ */
+
+/**
+ * Encodes question text, descriptions and answer text as HTML entities during ready.
+ * Changes app.questions before it is copied into an attempt; answer comments are untouched.
+ * Only needed for templates expecting pre-escaped strings. ccm-ui's html template already
+ * escapes plain strings, so combining both can display the entities themselves.
+ * @param {Object} event - Quiz event with app and type.
+ */
 export async function escapeHTML({ app, type }) {
   if (type !== "ready") return;
   app.questions.forEach((question) => {
@@ -12,6 +28,9 @@ export async function escapeHTML({ app, type }) {
  * Enable before `store` extension. A stable `results.key` (or `app.key`) and a user component are required.
  * Drafts remain private and bypass the result mapper. Position means the open question,
  * not completion. User actions await their save while the quiz holds `gui.busy`.
+ * On restore, loads [app, realm, user, "progress"]; on start, prepares the stable result key.
+ * Saves on submit/next/prev/jump and finish; stored deletes the draft after successful submission.
+ * finish also saves the last evaluated answer when feedback is disabled.
  * @param {Object} event - Quiz event containing `app` and `type`.
  * @returns {Promise<void>} Rejects on failed authentication, loading, saving or deletion.
  */
@@ -86,18 +105,26 @@ export async function restore({ app, type }) {
   });
 }
 
-/** Shuffles questions only when the quiz creates a new attempt. */
+/**
+ * Shuffles questions in place on create, preserving order on restoration and repeated starts.
+ * @param {Object} event - Quiz event with app and type.
+ */
 export function shuffleQuestions({ app, type }) {
   if (type === "create") shuffle(app.state.questions);
 }
 
-/** Shuffles answers only when the quiz creates a new attempt. */
+/**
+ * Shuffles each question's answers in place on create; restored answer order stays intact.
+ * @param {Object} event - Quiz event with app and type.
+ */
 export function randomAnswers({ app, type }) {
   if (type === "create") app.state.questions.forEach((question) => shuffle(question.answers));
 }
 
 /**
  * Records attempt times for analytics; enable before store and restart.
+ * Sets state.startedAt on start and state.submittedAt on the first finish event (UTC ISO strings).
+ * submittedAt describes the submission attempt, not the server's confirmed storage time.
  * Re-rendering and retried submissions retain their original timestamps.
  * @param {Object} event - Quiz event with app and type.
  */
@@ -106,6 +133,15 @@ export function timestamps({ app, type }) {
   if (type === "finish") app.state.submittedAt ??= new Date().toISOString();
 }
 
+/**
+ * Shows a summary before the actual finish action, when feedback is enabled.
+ * On ready, remembers the original handler; on start, replaces it for this attempt.
+ * The first Finish click shows the summary without emitting finish or submitting results.
+ * The summary's Finish button then invokes the original handler, including storage/restart.
+ * Uses question.points when the total is nonzero; otherwise shows fully correct questions.
+ * Optional config: duration (animation milliseconds, default 800), labels.points and labels.corrects.
+ * @param {Object} event - Quiz event with app and type.
+ */
 export function summary({ app, type }) {
   if (!app.feedback) return;
   if (type === "ready") app.events.finish2 = app.events.finish;
@@ -151,7 +187,7 @@ export function summary({ app, type }) {
         app,
       );
 
-      // animate progress bar
+      // Animate from zero to the result; duration uses milliseconds.
       const progress = app.element.querySelector("progress");
       const target = progress.value;
       progress.value = 0;
@@ -165,11 +201,17 @@ export function summary({ app, type }) {
       }
       requestAnimationFrame(animate);
 
-      // restore original finish handler
+      // The next Finish click submits instead of showing this summary again.
       app.events.finish = app.events.finish2;
     });
 }
 
+/**
+ * Appends a progress bar on render, counting evaluated questions regardless of correctness.
+ * Skipped questions do not count; the current navigation position does not affect progress.
+ * Expects the question template to be rendered inside the quiz's main element.
+ * @param {Object} event - Quiz event with app and type.
+ */
 export function progressBar({ app, type }) {
   if (type !== "render") return;
   const total = app.state.questions.length;
@@ -185,6 +227,12 @@ export function progressBar({ app, type }) {
   app.element.querySelector("main").appendChild(progress);
 }
 
+/**
+ * Renders question numbers with current/evaluated classes and, with feedback, correctness.
+ * This extension only displays pages. Enable it before skippable or prevButton so those
+ * extensions can attach forward/backward navigation to the newly rendered page elements.
+ * @param {Object} event - Quiz event with app and type; handles render.
+ */
 export function paging({ app, type }) {
   if (type !== "render") return;
 
@@ -206,11 +254,25 @@ export function paging({ app, type }) {
   app.element.querySelector("main").appendChild(paging);
 }
 
+/**
+ * Removes the question template's Finish button on render.
+ * The embedding app or another extension must provide a way to finish if submission is needed.
+ * Expects a button with data-on-click="finish" in each question view.
+ * @param {Object} event - Quiz event with app and type.
+ */
 export function noFinishButton({ app, type }) {
   if (type !== "render") return;
   app.element.querySelector('[data-on-click="finish"]').remove();
 }
 
+/**
+ * Allows advancing without submitting first, and finishing on the last question.
+ * On render, enables Next/Finish and attaches forward jumps to pages created by paging.
+ * Page jumps emit jump after rendering and do not evaluate the question being left.
+ * Next still follows the core behavior: without feedback, it evaluates before advancing.
+ * All page jumps use app.run so they cannot overlap another user action.
+ * @param {Object} event - Quiz event with app and type.
+ */
 export function skippable({ app, type }) {
   if (type !== "render") return;
 
@@ -236,12 +298,25 @@ export function skippable({ app, type }) {
   });
 }
 
+/**
+ * Enables an existing Finish button on every question, even before evaluation.
+ * Does not add a button or evaluate skipped questions; finish keeps the core behavior.
+ * @param {Object} event - Quiz event with app and type; handles render.
+ */
 export function anytimeFinish({ app, type }) {
   if (type !== "render") return;
   const finishBtn = app.element.querySelector('[data-on-click="finish"]');
   if (finishBtn) finishBtn.disabled = false;
 }
 
+/**
+ * Registers Previous on ready and adds its button on each render.
+ * With paging enabled earlier, also makes preceding page numbers clickable.
+ * Previous evaluates the current question only without feedback; page jumps never evaluate.
+ * Emits prev or jump after rendering, allowing restore to save the new position.
+ * Uses app.run for both actions; optional labels.prev defaults to "Previous".
+ * @param {Object} event - Quiz event with app and type.
+ */
 export function prevButton({ app, type }) {
   switch (type) {
     case "render":
@@ -276,6 +351,14 @@ export function prevButton({ app, type }) {
   }
 }
 
+/**
+ * Gives checkbox answers three states: 1 = undecided, 2 = rejected, 3 = selected.
+ * On render, restores indeterminate presentation and attaches the click cycle 1 -> 2 -> 3 -> 1.
+ * Clicks update answer.tristate immediately; answer.selected is written by core evaluation.
+ * Combine with decisionScore to give undecided answers zero points instead of treating
+ * an unchecked box as a deliberate rejection. Radio questions are unchanged.
+ * @param {Object} event - Quiz event with app and type.
+ */
 export function triState({ app, type }) {
   if (type !== "render") return;
   const question = app.state.questions[app.current];
@@ -306,6 +389,14 @@ export function triState({ app, type }) {
   });
 }
 
+/**
+ * Calculates question.points on evaluate, after the core has updated answer.selected.
+ * Radio questions score 1 for selecting a correct answer, otherwise 0.
+ * Checkbox decisions score +1 when correct and -1 when incorrect, with a minimum total of 0.
+ * With triState, undecided answers score 0; without it, unchecked answers count as rejections.
+ * Place before other evaluate extensions that consume question.points.
+ * @param {Object} event - Quiz event with app and type.
+ */
 export function decisionScore({ app, type }) {
   if (type !== "evaluate") return;
   const question = app.state.questions[app.current];
@@ -345,6 +436,8 @@ export function decisionScore({ app, type }) {
  *
  * App and attempt keys are fixed at start; user identity is bound on first required login.
  * A retry keeps the same key because a server write may have succeeded even when its response was lost.
+ * Emits and awaits stored after saving, so restore can delete its draft before restart runs.
+ * A stored listener error propagates even though the final result has already been written.
  *
  * @param {Object} event - Event dispatched by the quiz.
  * @param {Object} event.app - Quiz instance with state, results, optional user, and the CCM helpers.
@@ -397,12 +490,25 @@ export async function store({ app, type }) {
   await app.emit("stored");
 }
 
+/**
+ * Logs every event and the current state to the browser console for development.
+ * Also logs the complete instance on init. This is a debugging example, not an analytics
+ * exporter: it neither transforms results nor sends them to a datastore.
+ * @param {Object} event - Quiz event with app and type.
+ */
 export function analytics(event) {
   if (event.type === "init") console.log(event.app);
   console.log("Event:", event.type, event.app.state);
-  // with datastore
 }
 
+/**
+ * Discards the in-memory attempt after finish and starts a fresh quiz.
+ * Place after store and other finish extensions that need the completed state.
+ * Because dispatch is sequential, a storage or draft-cleanup error prevents this restart.
+ * Does not delete submitted results; store/restore handle persistence separately.
+ * @param {Object} event - Quiz event with app and type.
+ * @returns {Promise<void>} Resolves after the new quiz has started.
+ */
 export async function restart({ app, type }) {
   if (type !== "finish") return;
   delete app.state;
@@ -426,6 +532,11 @@ function prepareResultKey(app) {
   app.state.key = mode === "append" ? [appKey, app.ccm.helper.generateKey()] : appKey;
 }
 
+/**
+ * Encodes HTML-sensitive characters; does not sanitize or validate HTML markup.
+ * @param {*} str - Value to convert to text and encode.
+ * @returns {string} Text containing HTML entities.
+ */
 function escape(str) {
   return String(str).replace(
     /[&<>"']/g,
@@ -440,6 +551,11 @@ function escape(str) {
   );
 }
 
+/**
+ * Randomizes an array in place using Fisher-Yates.
+ * @param {Array} array - Questions or answers to reorder.
+ * @returns {Array} The same array, with its elements shuffled.
+ */
 function shuffle(array) {
   // Fisher–Yates algorithm
   for (let i = array.length - 1; i > 0; i--) {
@@ -449,7 +565,12 @@ function shuffle(array) {
   return array;
 }
 
-/** Checks the simple realm/account keys used in personal result and draft keys. */
+/**
+ * Checks the simple realm/account keys used in personal result and draft keys.
+ * @param {Object} app - Quiz instance providing the CCM key validator.
+ * @param {Object|null} identity - Public identity returned by user.login().
+ * @throws {Error} If realm or key is missing, invalid or an array key.
+ */
 function validateIdentity(app, identity) {
   if (!identity || !app.ccm.helper.isKey(identity.realm, false) || !app.ccm.helper.isKey(identity.key, false))
     throw new Error("Results require a valid realm and user key.");
