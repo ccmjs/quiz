@@ -151,27 +151,30 @@ export const component = {
      */
     this.events = {
       /** Evaluates the current question and shows feedback. */
-      submit: () => this.run(async () => {
-        if (!this.feedback) return;
-        await this.evaluate();
-        await this.renderQuestion();
-        await this.emit("submit");
-      }),
+      submit: () =>
+        this.run(async () => {
+          if (!this.feedback) return;
+          await this.evaluate();
+          await this.renderQuestion();
+          await this.emit("submit");
+        }),
 
       /** Advances to the next question. */
-      next: () => this.run(async () => {
-        if (this.current >= this.state.questions.length - 1) return;
-        if (!this.feedback) await this.evaluate();
-        this.current++;
-        await this.renderQuestion(false);
-        await this.emit("next");
-      }),
+      next: () =>
+        this.run(async () => {
+          if (this.current >= this.state.questions.length - 1) return;
+          if (!this.feedback) await this.evaluate();
+          this.current++;
+          await this.renderQuestion(false);
+          await this.emit("next");
+        }),
 
       /** Finishes the quiz. */
-      finish: () => this.run(async () => {
-        if (!this.feedback) await this.evaluate();
-        await this.emit("finish");
-      }),
+      finish: () =>
+        this.run(async () => {
+          if (!this.feedback) await this.evaluate();
+          await this.emit("finish");
+        }),
     };
 
     /**
@@ -210,7 +213,6 @@ export const component = {
      * - evaluate
      * - next
      * - finish
-     * - stored (emitted by the store extension after a successful result write)
      *
      * Each configured extension receives an object:
      *
@@ -226,8 +228,7 @@ export const component = {
     this.emit = async (type) => {
       const extensions = [].concat(this.extensions || []);
 
-      for (const extension of extensions)
-        if (extension) await extension({ app: this, type });
+      for (const extension of extensions) if (extension) await extension({ app: this, type });
     };
 
     /** Disables interaction with quiz content without changing each control's own disabled state. */

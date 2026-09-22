@@ -7,24 +7,93 @@ export async function escapeHTML({ app, type }) {
   });
 }
 
+/**
+ * Restores a personal attempt and saves confirmed answers and navigation in `results.store`.
+ * Enable before `store` extension. A stable `results.key` (or `app.key`) and a user component are required.
+ * Drafts remain private and bypass the result mapper. Position means the open question,
+ * not completion. User actions await their save while the quiz holds `gui.busy`.
+ * @param {Object} event - Quiz event containing `app` and `type`.
+ * @returns {Promise<void>} Rejects on failed authentication, loading, saving or deletion.
+ */
 export async function restore({ app, type }) {
-  if (type !== "before-start") return;
-  if (app.state) return;
-  if (!app.ccm.helper.isStore(app.store) || !app.ccm.helper.isKey(app.key)) return;
-  const state = await app.store.get(app.key);
-  if (state) app.state = state;
+  if (!["restore", "start", "submit", "next", "prev", "jump", "finish", "stored"].includes(type)) return;
+  const results = app.results;
+  if (!results || !app.ccm.helper.isStore(results.store)) return;
+  const appKey = results.key ?? app.key;
+  if (!app.ccm.helper.isKey(appKey, false))
+    throw new Error("Restoring progress requires a stable results.key or app.key.");
+  if (!app.user) throw new Error("Private progress requires a user component.");
+  const identity = await app.user.login();
+  validateIdentity(app, identity);
+  if (app.state?.user !== undefined && (app.state.realm !== identity.realm || app.state.user !== identity.key))
+    throw new Error("Sign in with the account that started this attempt.");
+  const key = [appKey, identity.realm, identity.key, "progress"];
+
+  if (type === "restore") {
+    // The quiz requests restoration before creating state, with the user host already attached.
+    const saved = await results.store.get(key);
+    if (!saved) return;
+    const state = saved.state;
+    const position = saved.position;
+    if (
+      !state ||
+      state.app !== appKey ||
+      !app.ccm.helper.isKey(state.key) ||
+      !Array.isArray(state.questions) ||
+      !state.questions.every((question) => Array.isArray(question?.answers)) ||
+      !Number.isInteger(position) ||
+      position < 0 ||
+      position >= state.questions.length
+    )
+      throw new Error("Invalid saved quiz progress.");
+    app.state = state;
+    app.current = position;
+    return;
+  }
+  if (type === "start") {
+    // Retain the final submission key in the draft, including a unique append attempt key.
+    await store({ app, type: "start" });
+    if (results.userSpecific) bindUser(app, identity);
+    // Even shared results have personal drafts; final storage removes these fields when not user-specific.
+    app.state.realm = identity.realm;
+    app.state.user = identity.key;
+    return;
+  }
+  if (type === "stored") {
+    // Only a successful final result write emits this event; a failure leaves the draft available.
+    await results.store.del(key);
+    return;
+  }
+  const state = structuredClone(app.state);
+  for (const question of state.questions) {
+    if (question.evaluated) continue;
+    // Checkbox clicks change tristate immediately; unconfirmed input is not a saved answer.
+    for (const answer of question.answers) {
+      delete answer.selected;
+      delete answer.tristate;
+    }
+  }
+  const previous = await results.store.get(key);
+  await results.store.set({
+    key,
+    app: state.app,
+    realm: state.realm,
+    user: state.user,
+    status: "in-progress",
+    state,
+    position: app.current,
+    _: previous?._ ?? { access: { get: "owner", set: "owner", del: "owner" } },
+  });
 }
 
-export async function shuffleQuestions({ app, type }) {
-  if (type !== "start") return;
-  shuffle(app.state.questions);
-  await app.renderQuestion();
+/** Shuffles questions only when the quiz creates a new attempt. */
+export function shuffleQuestions({ app, type }) {
+  if (type === "create") shuffle(app.state.questions);
 }
 
-export async function randomAnswers({ app, type }) {
-  if (type !== "start") return;
-  app.state.questions.forEach((question) => shuffle(question.answers));
-  app.renderQuestion();
+/** Shuffles answers only when the quiz creates a new attempt. */
+export function randomAnswers({ app, type }) {
+  if (type === "create") app.state.questions.forEach((question) => shuffle(question.answers));
 }
 
 /**
@@ -43,20 +112,21 @@ export function summary({ app, type }) {
   if (type !== "start") return;
   if (app.events.finish !== app.events.finish2) return;
 
-  app.events.finish = async () => {
-    const total = app.state.questions.length;
-    let correct = 0;
-    let max = 0;
-    let points = 0;
+  app.events.finish = () =>
+    app.run(async () => {
+      const total = app.state.questions.length;
+      let correct = 0;
+      let max = 0;
+      let points = 0;
 
-    app.state.questions.forEach((question) => {
-      question.answers.every((answer) => answer.selected === answer.correct) && correct++;
-      max += question.type === "radio" ? 1 : question.answers.length;
-      points += question.points || 0;
-    });
+      app.state.questions.forEach((question) => {
+        question.answers.every((answer) => answer.selected === answer.correct) && correct++;
+        max += question.type === "radio" ? 1 : question.answers.length;
+        points += question.points || 0;
+      });
 
-    app.ui.render(
-      app.ui.html`
+      app.ui.render(
+        app.ui.html`
         <section class="summary">
           <h1>Summary</h1>
           <p>
@@ -77,27 +147,27 @@ export function summary({ app, type }) {
           </nav>
         </section>
       `,
-      app.content,
-      app,
-    );
+        app.content,
+        app,
+      );
 
-    // animate progress bar
-    const progress = app.element.querySelector("progress");
-    const target = progress.value;
-    progress.value = 0;
-    const duration = app.duration || 800;
-    const start = performance.now();
-    function animate(now) {
-      const t = Math.min((now - start) / duration, 1);
-      // ease-out
-      progress.value = target * (1 - Math.pow(1 - t, 3));
-      if (t < 1) requestAnimationFrame(animate);
-    }
-    requestAnimationFrame(animate);
+      // animate progress bar
+      const progress = app.element.querySelector("progress");
+      const target = progress.value;
+      progress.value = 0;
+      const duration = app.duration || 800;
+      const start = performance.now();
+      function animate(now) {
+        const t = Math.min((now - start) / duration, 1);
+        // ease-out
+        progress.value = target * (1 - Math.pow(1 - t, 3));
+        if (t < 1) requestAnimationFrame(animate);
+      }
+      requestAnimationFrame(animate);
 
-    // restore original finish handler
-    app.events.finish = app.events.finish2;
-  };
+      // restore original finish handler
+      app.events.finish = app.events.finish2;
+    });
 }
 
 export function progressBar({ app, type }) {
@@ -156,11 +226,13 @@ export function skippable({ app, type }) {
   app.element.querySelectorAll(".paging .page").forEach((page, i) => {
     if (i <= app.current) return;
     page.classList.add("clickable");
-    page.addEventListener("click", async () => {
-      app.current = i;
-      await app.renderQuestion();
-      await app.emit("jump");
-    });
+    page.addEventListener("click", () =>
+      app.run(async () => {
+        app.current = i;
+        await app.renderQuestion();
+        await app.emit("jump");
+      }),
+    );
   });
 }
 
@@ -182,22 +254,25 @@ export function prevButton({ app, type }) {
       app.element.querySelectorAll(".paging .page").forEach((page, i) => {
         if (i >= app.current) return;
         page.classList.add("clickable");
-        page.addEventListener("click", async () => {
-          app.current = i;
-          await app.renderQuestion();
-          await app.emit("jump");
-        });
+        page.addEventListener("click", () =>
+          app.run(async () => {
+            app.current = i;
+            await app.renderQuestion();
+            await app.emit("jump");
+          }),
+        );
       });
 
       break;
     case "ready":
-      app.events.prev = () => {
-        if (app.current === 0) return;
-        if (!app.feedback) app.evaluate();
-        app.current--;
-        app.renderQuestion();
-        app.emit("prev");
-      };
+      app.events.prev = () =>
+        app.run(async () => {
+          if (app.current === 0) return;
+          if (!app.feedback) await app.evaluate();
+          app.current--;
+          await app.renderQuestion();
+          await app.emit("prev");
+        });
   }
 }
 
@@ -300,7 +375,7 @@ export async function store({ app, type }) {
   if (results.userSpecific || results._) {
     if (!app.user) throw new Error("Saving these results requires a user component.");
     const identity = await app.user.login();
-    if (results.userSpecific) bindUser(identity);
+    if (results.userSpecific) bindUser(app, identity);
   }
   // Map a copy so custom transformations cannot change the running quiz state.
   const state = structuredClone(app.state);
@@ -310,6 +385,7 @@ export async function store({ app, type }) {
   /** Mapped result with authoritative submission metadata restored after the transformation. */
   const data = {
     ...mapped,
+    status: "submitted",
     key: structuredClone(app.state.key),
     app: app.state.app,
   };
@@ -329,29 +405,8 @@ export async function store({ app, type }) {
   // Keep state intact on failure; a following restart extension runs only after this promise resolves.
   await results.store.set(data);
 
-  /**
-   * Binds the attempt to one identity, rejecting a different account on later submissions.
-   * Produces [app, realm, user] or [app, realm, user, attempt] without regenerating key parts.
-   * @param {Object|null} identity - Public identity returned by user.login() or user.getState().
-   * @param {string} identity.realm - User realm following the simple CCM key format.
-   * @param {string} identity.key - Stable account key, not the displayed username.
-   * @returns {void}
-   * @throws {Error} If the identity is invalid or differs from the attempt's bound user.
-   */
-  function bindUser(identity) {
-    if (!identity || !app.ccm.helper.isKey(identity.realm, false) || !app.ccm.helper.isKey(identity.key, false))
-      throw new Error("Results require a valid realm and user key.");
-    if (app.state.user !== undefined) {
-      if (identity.realm !== app.state.realm || identity.key !== app.state.user)
-        throw new Error("Sign in with the account that started this attempt.");
-      return;
-    }
-    const parts = [].concat(app.state.key);
-    parts.splice(1, 0, identity.realm, identity.key);
-    app.state.key = parts;
-    app.state.realm = identity.realm;
-    app.state.user = identity.key;
-  }
+  // Let restore delete its draft before a following finish extension restarts the quiz.
+  await app.emit("stored");
 }
 
 export function analytics(event) {
@@ -387,4 +442,34 @@ function shuffle(array) {
     [array[i], array[j]] = [array[j], array[i]];
   }
   return array;
+}
+
+/** Checks the simple realm/account keys used in personal result and draft keys. */
+function validateIdentity(app, identity) {
+  if (!identity || !app.ccm.helper.isKey(identity.realm, false) || !app.ccm.helper.isKey(identity.key, false))
+    throw new Error("Results require a valid realm and user key.");
+}
+
+/**
+ * Binds the attempt to one identity, rejecting a different account on later submissions.
+ * Produces [app, realm, user] or [app, realm, user, attempt] without regenerating key parts.
+ * @param {Object} app - Quiz instance whose attempt is being bound.
+ * @param {Object|null} identity - Public identity returned by user.login() or user.getState().
+ * @param {string} identity.realm - User realm following the simple CCM key format.
+ * @param {string} identity.key - Stable account key, not the displayed username.
+ * @returns {void}
+ * @throws {Error} If the identity is invalid or differs from the attempt's bound user.
+ */
+function bindUser(app, identity) {
+  validateIdentity(app, identity);
+  if (app.state.user !== undefined) {
+    if (identity.realm !== app.state.realm || identity.key !== app.state.user)
+      throw new Error("Sign in with the account that started this attempt.");
+    return;
+  }
+  const parts = [].concat(app.state.key);
+  parts.splice(1, 0, identity.realm, identity.key);
+  app.state.key = parts;
+  app.state.realm = identity.realm;
+  app.state.user = identity.key;
 }
