@@ -18,7 +18,7 @@ function create(options = {}) {
     user: { login: async () => identity, getState: () => identity },
     ccm: { helper: {
       isStore: value => !!value?.set,
-      isKey: value => typeof value === "string" && /^[a-z][a-z0-9_]{0,31}$/.test(value),
+      isKey: window.ccm.helper.isKey,
       generateKey: () => `generated${++sequence}`,
       mapObject: window.ccm.helper.mapObject,
     } },
@@ -180,4 +180,16 @@ test("mapping failures prevent writes and retain the attempt for retry", async (
   await assert.rejects(store({ app, type: "finish" }), /mapping failed/);
   assert.equal(saved.size, 0);
   assert.deepEqual(app.state.key, key);
+});
+
+test("app and identity key parts reject arrays even though compound dataset keys are valid", async () => {
+  const invalidApp = create({ key: ["quiz"] });
+  await assert.rejects(invalidApp.app.start(), /simple CCM key/);
+  for (const field of ["realm", "key"]) {
+    const { app, identity, saved } = create();
+    await app.start();
+    identity[field] = [identity[field]];
+    await assert.rejects(store({ app, type: "finish" }), /valid realm and user key/);
+    assert.equal(saved.size, 0);
+  }
 });

@@ -50,7 +50,7 @@ export function summary({ app, type }) {
 
     app.ui.render(
       app.ui.html`
-        <main>
+        <section class="summary">
           <h1>Summary</h1>
           <p>
             ${
@@ -68,9 +68,9 @@ export function summary({ app, type }) {
           <nav>
             <button data-on-click="finish">${app.labels.finish}</button>
           </nav>
-        </main>
+        </section>
       `,
-      app.element,
+      app.content,
       app,
     );
 
@@ -136,36 +136,6 @@ export function paging({ app, type }) {
   `;
 
   app.element.querySelector("main").appendChild(paging);
-}
-
-export async function startButton({ app, type }) {
-  switch (type) {
-    case "start":
-      app.element.firstElementChild.hidden = true;
-      const startBtn = app.ui.html`<button data-on-click="startbtn">
-        ${app.labels.start || "Start"}
-      </button>`;
-      app.ui.bind(startBtn, app);
-      app.element.appendChild(startBtn);
-      break;
-    case "render":
-      const exitBtn = app.ui.html`<button data-on-click="exit">
-        ${app.labels.exit || "Exit"}
-      </button>`;
-      app.ui.bind(exitBtn, app);
-      app.element.querySelector(".buttons").appendChild(exitBtn);
-      break;
-    case "ready":
-      app.events.startbtn = () => {
-        app.element.querySelector('[data-on-click="startbtn"]').hidden = true;
-        app.element.firstElementChild.hidden = false;
-        app.emit("startbtn");
-      };
-      app.events.exit = async () => {
-        await app.start();
-        app.emit("exit");
-      };
-  }
 }
 
 export function noFinishButton({ app, type }) {
@@ -291,10 +261,116 @@ export function decisionScore({ app, type }) {
   }
 }
 
+/**
+ * Saves completed attempts using `config.results`.
+ * Enable this extension before any finish extension that clears state (such as restart).
+ * It prepares the result key on start and writes only on finish, not after each answer.
+ * Rejected login, mapping or storage promises stop event dispatch and leave the attempt available for retry.
+ *
+ * Configuration in `app.results`:
+ * - `store`: resolved CCM datastore; missing/invalid stores disable this extension.
+ * - `key`: app identifier; otherwise `app.key`, otherwise a generated key for this attempt.
+ * - `mode`: "replace" (default) reuses the app/user key; "append" adds a unique attempt key.
+ * - `userSpecific`: include realm/user in the key and as separate queryable fields.
+ * - `mapper`: optional path mapping or function receiving a state copy; may return a promise for an object.
+ * - `_`: initial permission settings for new records; existing records retain their saved settings.
+ * Authentication uses `app.user` when saving user-specific or protected results.
+ * For login before participation, configure `autoLogin` on the user instance.
+ * The server assigns ownership and enforces permissions.
+ *
+ * App and attempt keys are fixed at start; user identity is bound on first required login.
+ * A retry keeps the same key because a server write may have succeeded even when its response was lost.
+ *
+ * @param {Object} event - Event dispatched by the quiz.
+ * @param {Object} event.app - Quiz instance with state, results, optional user, and the CCM helpers.
+ * @param {string} event.type - Handles `start` and `finish`; other events do not save data.
+ * @returns {Promise<void>} Resolves when this event is handled; rejects on invalid settings or failed operations.
+ */
 export async function store({ app, type }) {
-  if (!app.ccm.helper.isStore(app.store)) return;
-  if (type === "start") app.state.key = app.key;
-  if (type === "evaluate") await app.store.set(app.state);
+  /** Optional persistence settings; the datastore dependency has already been resolved by CCM. */
+  const results = app.results;
+  if (!results || !app.ccm.helper.isStore(results.store)) return;
+  const mode = results.mode ?? "replace";
+  if (!["replace", "append"].includes(mode))
+    throw new Error("Invalid results.mode.");
+
+  // Preserve an existing attempt key when start() is called again without clearing state.
+  // Until user binding, the key is appKey or [appKey, attemptKey].
+  if (type === "start" && !app.state.key) {
+    const appKey = results.key ?? app.key ?? app.ccm.helper.generateKey();
+    if (!app.ccm.helper.isKey(appKey, false))
+      throw new Error("The results app key must be a simple CCM key.");
+    app.state.app = appKey;
+    const parts = [appKey];
+    if (mode === "append") parts.push(app.ccm.helper.generateKey());
+    app.state.key = parts.length === 1 ? appKey : parts;
+  }
+  if (type !== "finish") return;
+
+  // login() reuses an existing session or opens the login dialog when necessary.
+  // Protected results also need a login when their keys are not user-specific.
+  if (results.userSpecific || results._) {
+    if (!app.user)
+      throw new Error("Saving these results requires a user component.");
+    const identity = await app.user.login();
+    if (results.userSpecific) bindUser(identity);
+  }
+  // Map a copy so custom transformations cannot change the running quiz state.
+  const state = structuredClone(app.state);
+  const mapped = !results.mapper
+    ? state
+    : await app.ccm.helper.mapObject(state, results.mapper);
+  if (!mapped || typeof mapped !== "object" || Array.isArray(mapped))
+    throw new Error("The result mapper must return an object.");
+  /** Mapped result with authoritative submission metadata restored after the transformation. */
+  const data = {
+    ...mapped,
+    key: structuredClone(app.state.key),
+    app: app.state.app,
+  };
+  // Identity fields belong to the submission, not to the configurable mapping.
+  delete data.realm;
+  delete data.user;
+  if (results.userSpecific) {
+    data.realm = app.state.realm;
+    data.user = app.state.user;
+  }
+  // Read the current record so an update does not reset rights changed since the previous submission.
+  const previous = await results.store.get(data.key);
+  // Permission defaults apply only on creation. Preserve even the absence of _ on existing public data.
+  delete data._;
+  const permissions = previous ? previous._ : results._;
+  if (permissions !== undefined) data._ = structuredClone(permissions);
+  // Keep state intact on failure; a following restart extension runs only after this promise resolves.
+  await results.store.set(data);
+
+  /**
+   * Binds the attempt to one identity, rejecting a different account on later submissions.
+   * Produces [app, realm, user] or [app, realm, user, attempt] without regenerating key parts.
+   * @param {Object|null} identity - Public identity returned by user.login() or user.getState().
+   * @param {string} identity.realm - User realm following the simple CCM key format.
+   * @param {string} identity.key - Stable account key, not the displayed username.
+   * @returns {void}
+   * @throws {Error} If the identity is invalid or differs from the attempt's bound user.
+   */
+  function bindUser(identity) {
+    if (
+      !identity ||
+      !app.ccm.helper.isKey(identity.realm, false) ||
+      !app.ccm.helper.isKey(identity.key, false)
+    )
+      throw new Error("Results require a valid realm and user key.");
+    if (app.state.user !== undefined) {
+      if (identity.realm !== app.state.realm || identity.key !== app.state.user)
+        throw new Error("Sign in with the account that started this attempt.");
+      return;
+    }
+    const parts = [].concat(app.state.key);
+    parts.splice(1, 0, identity.realm, identity.key);
+    app.state.key = parts;
+    app.state.realm = identity.realm;
+    app.state.user = identity.key;
+  }
 }
 
 export function analytics(event) {
@@ -305,7 +381,6 @@ export function analytics(event) {
 
 export async function restart({ app, type }) {
   if (type !== "finish") return;
-  if (app.ccm.helper.isStore(app.store)) await app.store.del(app.key);
   delete app.state;
   await app.start();
 }
