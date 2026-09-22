@@ -83,6 +83,12 @@ export const component = {
     ],
   },
   Instance: function () {
+    /** Transient interaction state, separate from the saved quiz answers. */
+    this.gui = {
+      /** Prevents overlapping user actions while rendering, loading or saving. */
+      busy: false,
+    };
+
     /** Lifecycle hook */
     this.init = async () => {
       await this.emit("init");
@@ -96,18 +102,46 @@ export const component = {
     /** Starts or restarts the quiz */
     this.start = async () => {
       await this.emit("before-start");
-      // Keep authentication outside the changing quiz content, including question changes and the summary.
-      if (!this.content) {
-        this.ui.render(this.views.main(this), this.element, this);
-        this.content = this.element.querySelector(".quiz-content");
+      // A restart extension may call start() while the finishing action still owns the busy flag.
+      const busy = this.gui.busy;
+      setBusy(true);
+      try {
+        // Keep authentication connected while the question or summary content changes.
+        if (!this.content) {
+          this.ui.render(this.views.main(this), this.element, this);
+          this.content = this.element.querySelector(".quiz-content");
+          setBusy(true);
+        }
+        if (this.user) await this.user.start();
+        this.current = 0;
+        // Restore only when no attempt is running; login dialogs can now use the attached user host.
+        if (!this.state) await this.emit("restore");
+        if (!this.state) {
+          this.state = { questions: structuredClone(this.questions) };
+          await this.emit("create");
+        }
+        await this.renderQuestion();
+        await this.emit("start");
+      } finally {
+        setBusy(busy);
       }
-      // Await user.start on retries too; the user component controls its one-time autoLogin.
-      if (this.user) await this.user.start();
-      if (!this.state)
-        this.state = { questions: structuredClone(this.questions) };
-      this.current = 0;
-      await this.renderQuestion();
-      await this.emit("start");
+    };
+
+    /**
+     * Runs one user action, ignoring further actions until it completes.
+     * Extensions use this for their own navigation or view changes too.
+     * Errors propagate, but always release the UI so the action can be retried.
+     * @param {Function} action - Async operation, including its awaited extension events.
+     * @returns {Promise<*>} The action's result, or undefined when another action is busy.
+     */
+    this.run = async (action) => {
+      if (this.gui.busy) return;
+      setBusy(true);
+      try {
+        return await action();
+      } finally {
+        setBusy(false);
+      }
     };
 
     /**
@@ -117,27 +151,27 @@ export const component = {
      */
     this.events = {
       /** Evaluates the current question and shows feedback. */
-      submit: async () => {
+      submit: () => this.run(async () => {
         if (!this.feedback) return;
         await this.evaluate();
         await this.renderQuestion();
         await this.emit("submit");
-      },
+      }),
 
       /** Advances to the next question. */
-      next: async () => {
+      next: () => this.run(async () => {
         if (this.current >= this.state.questions.length - 1) return;
         if (!this.feedback) await this.evaluate();
         this.current++;
         await this.renderQuestion(false);
         await this.emit("next");
-      },
+      }),
 
       /** Finishes the quiz. */
-      finish: async () => {
+      finish: () => this.run(async () => {
         if (!this.feedback) await this.evaluate();
         await this.emit("finish");
-      },
+      }),
     };
 
     /**
@@ -168,12 +202,15 @@ export const component = {
      * - init
      * - ready
      * - before-start
+     * - restore (load existing state after authentication UI is attached)
+     * - create (initialize a new state, never a restored one)
      * - start
      * - render
      * - submit
      * - evaluate
      * - next
      * - finish
+     * - stored (emitted by the store extension after a successful result write)
      *
      * Each configured extension receives an object:
      *
@@ -191,6 +228,14 @@ export const component = {
 
       for (const extension of extensions)
         if (extension) await extension({ app: this, type });
+    };
+
+    /** Disables interaction with quiz content without changing each control's own disabled state. */
+    const setBusy = (busy) => {
+      this.gui.busy = busy;
+      if (!this.content) return;
+      this.content.inert = busy;
+      this.content.setAttribute("aria-busy", String(busy));
     };
   },
 };

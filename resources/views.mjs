@@ -2,7 +2,7 @@
 export function main(app) {
   return app.ui.html`
     ${app.user && app.ui.html`<header class="user-area">${app.user.host}</header>`}
-    <main class="quiz-content"></section>
+    <main class="quiz-content"></main>
   `;
 }
 

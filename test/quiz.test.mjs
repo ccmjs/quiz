@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { component } from "../ccm.quiz.mjs";
-import { decisionScore, restore, store, restart } from "../resources/extensions.mjs";
+import { decisionScore, store, restart } from "../resources/extensions.mjs";
 
 // Run the real component and extensions; replace only rendering and browser inputs.
 function create(config = {}) {
@@ -13,7 +13,7 @@ function create(config = {}) {
       { text: "Multiple choice", type: "checkbox", answers: [{ text: "C", correct: true }, { text: "D", correct: true }, { text: "E" }] },
     ],
     ccm: { helper: { isStore: value => !!value && typeof value.get === "function", isKey: value => typeof value === "string" && !!value } },
-    element: { querySelectorAll: () => inputs, querySelector: () => ({}) },
+    element: { querySelectorAll: () => inputs, querySelector: () => ({ setAttribute() {} }) },
     views: { main: () => null, question: app => app.state.questions[app.current] },
     ui: { render: question => { if (question) renders.push(structuredClone(question)); } },
     ...config,
@@ -25,7 +25,7 @@ function create(config = {}) {
 test("lifecycle order and independent result data", async () => {
   const { app, events } = create();
   await app.init(); await app.ready(); await app.start();
-  assert.deepEqual(events, ["init", "ready", "before-start", "render", "start"]);
+  assert.deepEqual(events, ["init", "ready", "before-start", "restore", "create", "render", "start"]);
   app.state.questions[0].answers[0].selected = true;
   assert.equal(app.questions[0].answers[0].selected, undefined);
   assert.equal(app.current, 0);
@@ -89,15 +89,6 @@ test("extensions are awaited in order and failures stop subsequent extensions", 
   ] });
   await assert.rejects(app.emit("custom"), error => error === failure);
   assert.deepEqual(calls, ["custom", "second"]);
-});
-
-test("restore loads once before the first render", async () => {
-  let reads = 0;
-  const saved = { questions: [{ text: "Saved", answers: [], evaluated: true }] };
-  const { app, renders } = create({ key: "attempt", store: { async get(key) { reads++; assert.equal(key, "attempt"); return saved; } }, extensions: [restore] });
-  await app.start(); await app.start();
-  assert.equal(reads, 1); assert.equal(app.state, saved);
-  assert.equal(renders[0].text, "Saved");
 });
 
 test("storage receives evaluated state, and write failures propagate", async () => {

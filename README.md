@@ -98,3 +98,36 @@ in a persistent header at the top right; without it, no header is rendered.
 The changing question/summary views share one main content area.
 If a surrounding app needs a Start or Exit button, it controls when to call
 `ccm.start(...)` and when to show or remove the embedded quiz.
+
+### Restoring intermediate progress
+
+Enable `restore` before `store`. It uses `results.store`
+and requires a stable `results.key` (or component `key`) plus `user`. Login occurs
+at start so the correct personal draft can be loaded, even when final results
+are not user-specific. No separate restore configuration is needed.
+
+Drafts use `[app, realm, user, "progress"]`, `status: "in-progress"`, the complete
+quiz `state`, and `position` for the last open question. Confirmed answers and
+navigation (`submit`, `next`, `prev`, `jump`) are saved; unconfirmed input is not.
+Question and answer order are preserved. Position does not measure completion:
+skipped questions remain unanswered. Drafts receive private owner permissions,
+independently of the scheduled permissions for submitted results.
+
+The result mapper applies only to final records, marked `status: "submitted"`.
+Analytics queries should filter on that status. After a successful result write,
+`store` removes the draft before `restart` begins a new attempt. Failed submissions
+retain it, including the append attempt key, so a retry does not create another
+result. If draft deletion fails, the error propagates and submission can be retried.
+
+The lifecycle emits `restore` after the user host is attached and only when there
+is no state. If restoration supplies no state, the quiz creates one and emits
+`create`. Shuffle extensions respond only to `create`, so repeated starts and
+restored attempts retain their order without extra markers.
+
+User actions run through `app.run(action)`. It sets `gui.busy` and makes the quiz
+content inert until evaluation, rendering and saving finish. Further actions are
+ignored while busy; errors always release the UI. Navigation and summary
+extensions use the same method. Extensions should await their operations and use
+`app.run` for their user interactions, rather than firing concurrent events.
+After saving a final result, `store` emits `stored`; `restore` then deletes the
+draft. No per-instance draft map, write queue or set of restored states is needed.

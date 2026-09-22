@@ -13,6 +13,7 @@ function create(options = {}) {
   const saved = new Map();
   const identity = { key: "alice", realm: "we_test" };
   const app = {
+    async emit() {},
     key: "fallback", state: { questions: [] },
     element: { appendChild() {} },
     user: { login: async () => identity, getState: () => identity },
