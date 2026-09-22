@@ -1,3 +1,10 @@
+/*
+ * Quiz presentation inside the component's Shadow DOM; .root is the CCM content element.
+ * Element selectors therefore apply locally. Replacing the Shadow DOM requires adapted selectors.
+ * View classes describe answer states; optional extensions add summary, progress and paging UI.
+ */
+
+/* Theme values shared by all views; dark mode overrides the colors below. */
 .root {
   --primary: #0ba1e2;
   --primary-hover: #098dc6;
@@ -20,12 +27,14 @@
   box-sizing: border-box;
 }
 
+/* Include padding and borders in element sizes throughout the component. */
 *,
 *::before,
 *::after {
   box-sizing: inherit;
 }
 
+/* Persistent question/summary area; its inline size is the container for descendant queries. */
 main {
   container-type: inline-size;
   display: flex;
@@ -36,6 +45,7 @@ main {
   padding: 1.5rem;
 }
 
+/* Both views share spacing while the surrounding main element and user header remain connected. */
 .question,
 .summary {
   display: flex;
@@ -99,16 +109,19 @@ li:hover {
   box-shadow: var(--shadow);
 }
 
+/* Highlight the current choice only before evaluation, independently of correctness. */
 .question:not(.evaluated) li:has(.input:checked) {
   border-color: var(--primary);
   background: var(--primary-light);
 }
 
+/* The question view adds this class only when solution feedback is visible. */
 li.correct {
   border-color: var(--success);
   background: var(--success-light);
 }
 
+/* triState represents an undecided answer with the native indeterminate checkbox state. */
 li:has(input[type="checkbox"]:indeterminate) {
   border-style: dashed;
 }
@@ -128,7 +141,9 @@ input[type="checkbox"] {
   accent-color: var(--primary);
 }
 
-/* ---------- Comment ---------- */
+/* ---------- Answer explanations ---------- */
+
+/* The view hides this entire area until feedback is available and an answer has a comment. */
 
 .comment {
   position: relative;
@@ -158,6 +173,7 @@ input[type="checkbox"] {
   z-index: 100;
 }
 
+/* The hidden checkbox toggles its following panel without a JavaScript event handler. */
 .comment input:checked + span + div {
   display: block;
 }
@@ -190,6 +206,7 @@ button:active:not(:disabled) {
   transform: translateY(1px);
 }
 
+/* Individual action restrictions; gui.busy additionally makes the entire content area inert. */
 button:disabled {
   opacity: .45;
   cursor: default;
@@ -197,6 +214,7 @@ button:disabled {
 
 /* ---------- Progress ---------- */
 
+/* Wrapper supplied by progressBar; the summary also uses a native progress element. */
 .progress {
   display: flex;
 }
@@ -226,6 +244,7 @@ progress {
   transition: background .2s, color .2s, transform .15s;
 }
 
+/* paging marks the current question independently of its evaluation or correctness. */
 .page.current {
   outline: 2px solid var(--primary);
 }
@@ -234,6 +253,7 @@ progress {
   background: #cfcfcf;
 }
 
+/* Correctness colors override the neutral evaluated state only when feedback is enabled. */
 .page.correct {
   background: var(--success);
   color: white;
@@ -244,6 +264,7 @@ progress {
   color: white;
 }
 
+/* skippable and prevButton mark the page numbers for which they attach navigation handlers. */
 .page.clickable {
   cursor: pointer;
 }
@@ -261,6 +282,8 @@ progress {
 
 /* ---------- Container Query ---------- */
 
+/* Queries use an ancestor container, not the viewport. Descendants use main as their container;
+   the main rule itself only applies when a further ancestor provides a matching container. */
 @container (min-width: 40rem) {
   main {
     padding: 2rem;
@@ -276,7 +299,7 @@ progress {
   }
 }
 
-/* Authentication stays visible while quiz content changes. */
+/* Optional header from main(): positions the embedded user component outside the changing quiz content. */
 .user-area {
   display: flex;
   justify-content: flex-end;
