@@ -52,7 +52,7 @@ export async function restore({ app, type }) {
   }
   if (type === "start") {
     // Retain the final submission key in the draft, including a unique append attempt key.
-    await store({ app, type: "start" });
+    prepareResultKey(app);
     if (results.userSpecific) bindUser(app, identity);
     // Even shared results have personal drafts; final storage removes these fields when not user-specific.
     app.state.realm = identity.realm;
@@ -355,19 +355,7 @@ export async function store({ app, type }) {
   /** Optional persistence settings; the datastore dependency has already been resolved by CCM. */
   const results = app.results;
   if (!results || !app.ccm.helper.isStore(results.store)) return;
-  const mode = results.mode ?? "replace";
-  if (!["replace", "append"].includes(mode)) throw new Error("Invalid results.mode.");
-
-  // Preserve an existing attempt key when start() is called again without clearing state.
-  // Until user binding, the key is appKey or [appKey, attemptKey].
-  if (type === "start" && !app.state.key) {
-    const appKey = results.key ?? app.key ?? app.ccm.helper.generateKey();
-    if (!app.ccm.helper.isKey(appKey, false)) throw new Error("The results app key must be a simple CCM key.");
-    app.state.app = appKey;
-    const parts = [appKey];
-    if (mode === "append") parts.push(app.ccm.helper.generateKey());
-    app.state.key = parts.length === 1 ? appKey : parts;
-  }
+  if (type === "start") prepareResultKey(app);
   if (type !== "finish") return;
 
   // login() reuses an existing session or opens the login dialog when necessary.
@@ -419,6 +407,23 @@ export async function restart({ app, type }) {
   if (type !== "finish") return;
   delete app.state;
   await app.start();
+}
+
+/**
+ * Prepares the app and result keys once per attempt, without writing to the datastore.
+ * Existing keys survive restoration, repeated starts and retries. Before user binding,
+ * the key is appKey in replace mode or [appKey, attemptKey] in append mode.
+ * @param {Object} app - Quiz instance with results configuration and initialized state.
+ * @returns {void}
+ */
+function prepareResultKey(app) {
+  const mode = app.results.mode ?? "replace";
+  if (!["replace", "append"].includes(mode)) throw new Error("Invalid results.mode.");
+  if (app.state.key) return;
+  const appKey = app.results.key ?? app.key ?? app.ccm.helper.generateKey();
+  if (!app.ccm.helper.isKey(appKey, false)) throw new Error("The results app key must be a simple CCM key.");
+  app.state.app = appKey;
+  app.state.key = mode === "append" ? [appKey, app.ccm.helper.generateKey()] : appKey;
 }
 
 function escape(str) {
