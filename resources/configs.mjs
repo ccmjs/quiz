@@ -1,10 +1,11 @@
 export const demo = {
+  // Stable question keys survive shuffling and allow comparisons across submissions.
   questions: [
     {
+      key: "html_definition",
       text: "Was ist HTML?",
       type: "radio",
-      description:
-        "Wählen Sie unter den folgenden Antworten die richtige Antwort aus.",
+      description: "Wählen Sie unter den folgenden Antworten die richtige Antwort aus.",
       answers: [
         {
           text: "ein internetfähiges Gerät",
@@ -37,6 +38,7 @@ export const demo = {
       ],
     },
     {
+      key: "html_abbreviation",
       text: "Wofür steht HTML?",
       type: "radio",
       answers: [
@@ -71,6 +73,7 @@ export const demo = {
       ],
     },
     {
+      key: "hyperlink",
       text: "Was ist ein Hyperlink und wofür setzt man ihn ein?",
       type: "radio",
       description: "Ein Hyperlink ist...",
@@ -106,6 +109,7 @@ export const demo = {
       ],
     },
     {
+      key: "html_usage",
       text: "Wofür wird HTML eingesetzt?",
       type: "radio",
       answers: [
@@ -154,6 +158,7 @@ export const demo = {
       ],
     },
     {
+      key: "html_inventor",
       text: "Wer hat HTML erfunden?",
       type: "radio",
       answers: [
@@ -163,8 +168,7 @@ export const demo = {
         },
         {
           text: "Fred Feuerstein",
-          comment:
-            "Fred Feuerstein ist der Vater in der Familie Feuerstein aus der gleichnamigen Zeichentrickserie.",
+          comment: "Fred Feuerstein ist der Vater in der Familie Feuerstein aus der gleichnamigen Zeichentrickserie.",
         },
         {
           text: "Jeff Bezos",
@@ -184,8 +188,7 @@ export const demo = {
         },
         {
           text: "Robert Cailliau",
-          comment:
-            "Robert Cailliau ist der erste Web-Surfer und Freund von Tim-Berners-Lee.",
+          comment: "Robert Cailliau ist der erste Web-Surfer und Freund von Tim-Berners-Lee.",
         },
         {
           text: "Steve Jobs",
@@ -194,12 +197,12 @@ export const demo = {
         {
           text: "Tim Berners-Lee",
           correct: true,
-          comment:
-            "Tim Berners-Lee ist der Erfinder von HTML und der Begründer des World Wide Web (WWW).",
+          comment: "Tim Berners-Lee ist der Erfinder von HTML und der Begründer des World Wide Web (WWW).",
         },
       ],
     },
     {
+      key: "html_origin",
       text: "Zu welchem ursprünglichen Zweck wurde HTML erfunden?",
       type: "radio",
       answers: [
@@ -234,6 +237,7 @@ export const demo = {
       ],
     },
     {
+      key: "html_development",
       text: "Wer arbeitet alles an der Weiterentwicklung von HTML?",
       type: "checkbox",
       answers: [
@@ -269,6 +273,7 @@ export const demo = {
       ],
     },
     {
+      key: "html_lists",
       text: "Welche der HTML-Tags dienen zur Darstellung von Listen?",
       type: "checkbox",
       answers: [
@@ -311,6 +316,7 @@ export const demo = {
     ["ccm.load", "././resources/extensions.mjs#restore"],
     ["ccm.load", "././resources/extensions.mjs#shuffleQuestions"],
     ["ccm.load", "././resources/extensions.mjs#randomAnswers"],
+    ["ccm.load", "././resources/extensions.mjs#timestamps"],
     ["ccm.load", "././resources/extensions.mjs#summary"],
     ["ccm.load", "././resources/extensions.mjs#progressBar"],
     ["ccm.load", "././resources/extensions.mjs#paging"],
@@ -343,18 +349,9 @@ export const demo = {
           {
             // Resolve provider resources independently of the page embedding this demo.
             url: "https://ccmjs.github.io/google_login/auth.html",
-            ui: [
-              "ccm.load",
-              "https://ccmjs.github.io/google_login/libs/ccm-ui/ccm-ui.mjs",
-            ],
-            views: [
-              "ccm.load",
-              "https://ccmjs.github.io/google_login/resources/views.mjs",
-            ],
-            css: [
-              "ccm.load",
-              "https://ccmjs.github.io/google_login/resources/styles.css",
-            ],
+            ui: ["ccm.load", "https://ccmjs.github.io/google_login/libs/ccm-ui/ccm-ui.mjs"],
+            views: ["ccm.load", "https://ccmjs.github.io/google_login/resources/views.mjs"],
+            css: ["ccm.load", "https://ccmjs.github.io/google_login/resources/styles.css"],
           },
         ],
       ],
@@ -365,16 +362,13 @@ export const demo = {
     /** App identifier; falls back to `app.key`, then a generated key when omitted. */
     key: "what_is_html",
     /** The server stores results in its configured MongoDB database. */
-    store: [
-      "ccm.store",
-      { name: "quiz-results", url: "http://localhost:8080" },
-    ],
+    store: ["ccm.store", { name: "quiz-results", url: "http://localhost:8080" }],
     /** Require login and include realm and user key in each result. */
     userSpecific: true,
     /** replace: one result per app/user; append: a new result for each attempt. */
     mode: "replace",
     /** Optional state-to-result mapping: a function or source-path → target-path object. */
-    // mapper: ["ccm.load", "././resources/mappers.mjs#result"],
+    mapper: ["ccm.load", "././resources/mappers.mjs#result"],
     /** Creation defaults only; the server assigns the authenticated owner. */
     _: {
       access: { get: "owner", set: "owner", del: "owner" },

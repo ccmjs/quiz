@@ -2,8 +2,7 @@ export async function escapeHTML({ app, type }) {
   if (type !== "ready") return;
   app.questions.forEach((question) => {
     question.text = escape(question.text);
-    if (question.description)
-      question.description = escape(question.description);
+    if (question.description) question.description = escape(question.description);
     question.answers.forEach((answer) => (answer.text = escape(answer.text)));
   });
 }
@@ -11,8 +10,7 @@ export async function escapeHTML({ app, type }) {
 export async function restore({ app, type }) {
   if (type !== "before-start") return;
   if (app.state) return;
-  if (!app.ccm.helper.isStore(app.store) || !app.ccm.helper.isKey(app.key))
-    return;
+  if (!app.ccm.helper.isStore(app.store) || !app.ccm.helper.isKey(app.key)) return;
   const state = await app.store.get(app.key);
   if (state) app.state = state;
 }
@@ -29,6 +27,16 @@ export async function randomAnswers({ app, type }) {
   app.renderQuestion();
 }
 
+/**
+ * Records attempt times for analytics; enable before store and restart.
+ * Re-rendering and retried submissions retain their original timestamps.
+ * @param {Object} event - Quiz event with app and type.
+ */
+export function timestamps({ app, type }) {
+  if (type === "start") app.state.startedAt ??= new Date().toISOString();
+  if (type === "finish") app.state.submittedAt ??= new Date().toISOString();
+}
+
 export function summary({ app, type }) {
   if (!app.feedback) return;
   if (type === "ready") app.events.finish2 = app.events.finish;
@@ -42,8 +50,7 @@ export function summary({ app, type }) {
     let points = 0;
 
     app.state.questions.forEach((question) => {
-      question.answers.every((answer) => answer.selected === answer.correct) &&
-        correct++;
+      question.answers.every((answer) => answer.selected === answer.correct) && correct++;
       max += question.type === "radio" ? 1 : question.answers.length;
       points += question.points || 0;
     });
@@ -96,9 +103,7 @@ export function summary({ app, type }) {
 export function progressBar({ app, type }) {
   if (type !== "render") return;
   const total = app.state.questions.length;
-  const evaluated = app.state.questions.filter(
-    (question) => question.evaluated,
-  ).length;
+  const evaluated = app.state.questions.filter((question) => question.evaluated).length;
   const progress = app.ui.html`
     <div class="progress">
       <progress
@@ -121,16 +126,9 @@ export function paging({ app, type }) {
         if (question.evaluated) {
           classes.push("evaluated");
           app.feedback &&
-            classes.push(
-              question.answers.every(
-                (answer) => answer.selected === answer.correct,
-              )
-                ? "correct"
-                : "wrong",
-            );
+            classes.push(question.answers.every((answer) => answer.selected === answer.correct) ? "correct" : "wrong");
         }
-        return app.ui
-          .html`<span class="page ${classes.join(" ")}">${i + 1}</span>`;
+        return app.ui.html`<span class="page ${classes.join(" ")}">${i + 1}</span>`;
       })}
     </nav>
   `;
@@ -152,8 +150,7 @@ export function skippable({ app, type }) {
 
   // Enable "Finish" on last question
   const finishBtn = app.element.querySelector('[data-on-click="finish"]');
-  if (finishBtn && app.current === app.state.questions.length - 1)
-    finishBtn.disabled = false;
+  if (finishBtn && app.current === app.state.questions.length - 1) finishBtn.disabled = false;
 
   // Enable forward navigation in paging (if present)
   app.element.querySelectorAll(".paging .page").forEach((page, i) => {
@@ -208,33 +205,30 @@ export function triState({ app, type }) {
   if (type !== "render") return;
   const question = app.state.questions[app.current];
   if (question.type !== "checkbox") return;
-  if (!question.answers[0].tristate)
-    question.answers.forEach((answer) => (answer.tristate = 1));
-  app.element
-    .querySelectorAll('.input[type="checkbox"]')
-    .forEach((checkbox, i) => {
-      const answer = question.answers[i];
-      if (answer.tristate === 1) checkbox.indeterminate = true;
-      checkbox.addEventListener("click", () => {
-        switch (answer.tristate) {
-          case 1:
-            checkbox.checked = false;
-            checkbox.indeterminate = false;
-            answer.tristate = 2;
-            break;
-          case 2:
-            checkbox.checked = true;
-            checkbox.indeterminate = false;
-            answer.tristate = 3;
-            break;
-          case 3:
-            checkbox.checked = false;
-            checkbox.indeterminate = true;
-            answer.tristate = 1;
-            break;
-        }
-      });
+  if (!question.answers[0].tristate) question.answers.forEach((answer) => (answer.tristate = 1));
+  app.element.querySelectorAll('.input[type="checkbox"]').forEach((checkbox, i) => {
+    const answer = question.answers[i];
+    if (answer.tristate === 1) checkbox.indeterminate = true;
+    checkbox.addEventListener("click", () => {
+      switch (answer.tristate) {
+        case 1:
+          checkbox.checked = false;
+          checkbox.indeterminate = false;
+          answer.tristate = 2;
+          break;
+        case 2:
+          checkbox.checked = true;
+          checkbox.indeterminate = false;
+          answer.tristate = 3;
+          break;
+        case 3:
+          checkbox.checked = false;
+          checkbox.indeterminate = true;
+          answer.tristate = 1;
+          break;
+      }
     });
+  });
 }
 
 export function decisionScore({ app, type }) {
@@ -242,11 +236,7 @@ export function decisionScore({ app, type }) {
   const question = app.state.questions[app.current];
   switch (question.type) {
     case "radio":
-      question.points = question.answers.some(
-        (answer) => answer.selected && answer.correct,
-      )
-        ? 1
-        : 0;
+      question.points = question.answers.some((answer) => answer.selected && answer.correct) ? 1 : 0;
       break;
     case "checkbox":
       question.points = Math.max(
@@ -291,15 +281,13 @@ export async function store({ app, type }) {
   const results = app.results;
   if (!results || !app.ccm.helper.isStore(results.store)) return;
   const mode = results.mode ?? "replace";
-  if (!["replace", "append"].includes(mode))
-    throw new Error("Invalid results.mode.");
+  if (!["replace", "append"].includes(mode)) throw new Error("Invalid results.mode.");
 
   // Preserve an existing attempt key when start() is called again without clearing state.
   // Until user binding, the key is appKey or [appKey, attemptKey].
   if (type === "start" && !app.state.key) {
     const appKey = results.key ?? app.key ?? app.ccm.helper.generateKey();
-    if (!app.ccm.helper.isKey(appKey, false))
-      throw new Error("The results app key must be a simple CCM key.");
+    if (!app.ccm.helper.isKey(appKey, false)) throw new Error("The results app key must be a simple CCM key.");
     app.state.app = appKey;
     const parts = [appKey];
     if (mode === "append") parts.push(app.ccm.helper.generateKey());
@@ -310,16 +298,13 @@ export async function store({ app, type }) {
   // login() reuses an existing session or opens the login dialog when necessary.
   // Protected results also need a login when their keys are not user-specific.
   if (results.userSpecific || results._) {
-    if (!app.user)
-      throw new Error("Saving these results requires a user component.");
+    if (!app.user) throw new Error("Saving these results requires a user component.");
     const identity = await app.user.login();
     if (results.userSpecific) bindUser(identity);
   }
   // Map a copy so custom transformations cannot change the running quiz state.
   const state = structuredClone(app.state);
-  const mapped = !results.mapper
-    ? state
-    : await app.ccm.helper.mapObject(state, results.mapper);
+  const mapped = !results.mapper ? state : await app.ccm.helper.mapObject(state, results.mapper);
   if (!mapped || typeof mapped !== "object" || Array.isArray(mapped))
     throw new Error("The result mapper must return an object.");
   /** Mapped result with authoritative submission metadata restored after the transformation. */
@@ -354,11 +339,7 @@ export async function store({ app, type }) {
    * @throws {Error} If the identity is invalid or differs from the attempt's bound user.
    */
   function bindUser(identity) {
-    if (
-      !identity ||
-      !app.ccm.helper.isKey(identity.realm, false) ||
-      !app.ccm.helper.isKey(identity.key, false)
-    )
+    if (!identity || !app.ccm.helper.isKey(identity.realm, false) || !app.ccm.helper.isKey(identity.key, false))
       throw new Error("Results require a valid realm and user key.");
     if (app.state.user !== undefined) {
       if (identity.realm !== app.state.realm || identity.key !== app.state.user)
