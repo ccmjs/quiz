@@ -131,3 +131,9 @@ extensions use the same method. Extensions should await their operations and use
 `app.run` for their user interactions, rather than firing concurrent events.
 After saving a final result, `store` emits `stored`; `restore` then deletes the
 draft. No per-instance draft map, write queue or set of restored states is needed.
+
+## Application state
+
+`instance.state` exposes the quiz answers, evaluation results and state fields added
+by extensions. Transient `gui` flags and the separate `current` question index are
+kept separately. Use `structuredClone(instance.state)` when you need a detached snapshot.
